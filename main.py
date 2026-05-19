@@ -7,6 +7,7 @@ import os
 import asyncio
 import base64
 import json
+import traceback
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import Response
@@ -129,19 +130,19 @@ async def media_stream(websocket: WebSocket) -> None:
             await dg_connection.finish()
 
     async def llm_worker() -> None:
-        try:
-            while True:
-                text = await llm_queue.get()
-                if text is None:
-                    break
-                print(f"[LLM] input: {text}")
+        while True:
+            text = await llm_queue.get()
+            if text is None:
+                break
+            print(f"[LLM] input: {text}")
+            try:
                 response = await chat.send_message_async(text)
                 reply = response.text.strip()
                 print(f"[LLM] risposta: {reply}")
                 if reply:
                     await tts_queue.put(reply)
-        except Exception as exc:
-            print(f"[LLM] errore: {exc}")
+            except Exception:
+                print(f"[LLM] errore:\n{traceback.format_exc()}")
 
     async def tts_sender() -> None:
         headers = {
