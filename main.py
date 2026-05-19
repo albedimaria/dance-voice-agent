@@ -13,6 +13,7 @@ from fastapi.responses import Response
 from supabase import create_client, Client
 from twilio.rest import Client as TwilioClient
 from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
+from cartesia import AsyncCartesia
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 
 app = FastAPI(title="dance-voice-agent")
@@ -28,6 +29,9 @@ twilio = TwilioClient(
 )
 
 deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
+cartesia = AsyncCartesia(api_key=os.environ["CARTESIA_API_KEY"])
+
+CARTESIA_VOICE_ID = "36d94908-c5b9-4014-b521-e69aee5bead0"
 
 
 @app.get("/health")
@@ -57,17 +61,20 @@ async def media_stream(websocket: WebSocket) -> None:
     await websocket.accept()
     print("[stream] WebSocket accettato")
 
+    stream_sid: str = ""
     dg_connection = deepgram.listen.asynclive.v("1")
     audio_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+    tts_queue: asyncio.Queue[str | None] = asyncio.Queue()
 
     async def on_transcript(self, result, **kwargs) -> None:
-        print(f"[deepgram] callback ricevuto — is_final={result.is_final}")
         transcript = result.channel.alternatives[0].transcript
-        if transcript:
-            tag = "FINAL" if result.is_final else "partial"
-            print(f"[STT {tag}] {transcript}")
+        if not transcript:
+            return
+        if result.is_final:
+            print(f"[STT FINAL] {transcript}")
+            await tts_queue.put(transcript)
         else:
-            print("[deepgram] callback con trascrizione vuota")
+            print(f"[STT partial] {transcript}")
 
     dg_connection.on(LiveTranscriptionEvents.Transcript, on_transcript)
 
@@ -96,7 +103,36 @@ async def media_stream(websocket: WebSocket) -> None:
         finally:
             await dg_connection.finish()
 
+    async def tts_sender() -> None:
+        try:
+            while True:
+                text = await tts_queue.get()
+                if text is None:
+                    break
+                print(f"[TTS] sintetizzando: {text}")
+                async for chunk in cartesia.tts.sse(
+                    model_id="sonic-2",
+                    transcript=text,
+                    voice={"mode": "id", "id": CARTESIA_VOICE_ID},
+                    output_format={
+                        "container": "raw",
+                        "encoding": "pcm_mulaw",
+                        "sample_rate": 8000,
+                    },
+                    language="it",
+                ):
+                    if chunk.audio:
+                        payload = base64.b64encode(chunk.audio).decode()
+                        await websocket.send_text(json.dumps({
+                            "event": "media",
+                            "streamSid": stream_sid,
+                            "media": {"payload": payload},
+                        }))
+        except Exception as exc:
+            print(f"[TTS] errore: {exc}")
+
     dg_task = asyncio.create_task(deepgram_sender())
+    tts_task = asyncio.create_task(tts_sender())
 
     try:
         while True:
@@ -111,6 +147,7 @@ async def media_stream(websocket: WebSocket) -> None:
             elif event == "connected":
                 print("[twilio] connected")
             elif event == "start":
+                stream_sid = data["start"]["streamSid"]
                 print(f"[stream] avviato — callSid={data['start'].get('callSid')}")
             elif event == "stop":
                 print("[stream] terminato")
@@ -121,4 +158,6 @@ async def media_stream(websocket: WebSocket) -> None:
         print(f"[stream] errore ricezione: {exc}")
     finally:
         await audio_queue.put(None)
+        await tts_queue.put(None)
         await dg_task
+        await tts_task
