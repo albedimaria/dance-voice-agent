@@ -14,13 +14,14 @@ from fastapi.responses import Response
 from supabase import create_client, Client
 from twilio.request_validator import RequestValidator
 from twilio.rest import Client as TwilioClient
-from twilio.twiml.voice_response import VoiceResponse, Connect
+from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 import httpx
 
 from openai import AsyncOpenAI
 
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 from prompt import SYSTEM_PROMPT
+from tools.supabase_tools import get_student_by_phone
 
 app = FastAPI(title="dance-voice-agent")
 
@@ -67,7 +68,9 @@ async def incoming_call(request: Request) -> Response:
         language="it-IT",
     )
     connect = Connect()
-    connect.stream(url=stream_url)
+    stream = Stream(url=stream_url)
+    stream.parameter(name="from", value=form.get("From", ""))
+    connect.append(stream)
     response.append(connect)
 
     return Response(content=str(response), media_type="application/xml")
@@ -79,6 +82,7 @@ async def media_stream(websocket: WebSocket) -> None:
     print("[stream] WebSocket accettato")
 
     stream_sid: str = ""
+    caller_phone: str = ""
     dg_connection = deepgram.listen.asynclive.v("1")
     audio_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
     llm_queue: asyncio.Queue[str | None] = asyncio.Queue()
@@ -206,7 +210,22 @@ async def media_stream(websocket: WebSocket) -> None:
                 print("[twilio] connected")
             elif event == "start":
                 stream_sid = data["start"]["streamSid"]
-                print(f"[stream] avviato — callSid={data['start'].get('callSid')}")
+                caller_phone = data["start"].get("customParameters", {}).get("from", "")
+                print(f"[stream] avviato — callSid={data['start'].get('callSid')} from={caller_phone}")
+                if caller_phone:
+                    student = await get_student_by_phone(supabase, caller_phone)
+                    if student:
+                        print(f"[DB] studente: {student['first_name']} {student['last_name']} ({student['level']})")
+                        history.append({
+                            "role": "system",
+                            "content": (
+                                f"Stai parlando con {student['first_name']} {student['last_name']}, "
+                                f"livello {student['level']}. "
+                                f"Abbonamento attivo: {'sì' if student['active_subscription'] else 'no'}."
+                            ),
+                        })
+                    else:
+                        print(f"[DB] numero non trovato: {caller_phone}")
             elif event == "stop":
                 print("[stream] terminato")
                 break
