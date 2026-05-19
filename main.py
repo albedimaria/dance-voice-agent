@@ -16,6 +16,8 @@ from twilio.rest import Client as TwilioClient
 from twilio.twiml.voice_response import VoiceResponse, Connect
 import httpx
 
+import google.generativeai as genai
+
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 
 app = FastAPI(title="dance-voice-agent")
@@ -32,6 +34,17 @@ twilio = TwilioClient(
 tw_validator = RequestValidator(os.environ["TWILIO_AUTH_TOKEN"])
 
 deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
+
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+gemini = genai.GenerativeModel(
+    model_name="gemini-2.0-flash",
+    system_instruction=(
+        "Sei un assistente vocale della scuola di ballo Ritmo Caliente. "
+        "Rispondi sempre in italiano, con frasi brevi e naturali adatte al parlato. "
+        "Non usare elenchi, markdown o simboli speciali. "
+        "Sii cordiale e conciso."
+    ),
+)
 
 CARTESIA_VOICE_ID = "36d94908-c5b9-4014-b521-e69aee5bead0"
 CARTESIA_API_URL = "https://api.cartesia.ai/tts/sse"
@@ -56,7 +69,7 @@ async def incoming_call(request: Request) -> Response:
 
     response = VoiceResponse()
     response.say(
-        "Benvenuto alla scuola di ballo. Come posso aiutarti?",
+        "holaa, qui Ritmo Caliente! la tua chiamata verrà trasferita a un operatore!",
         language="it-IT",
     )
     connect = Connect()
@@ -74,7 +87,9 @@ async def media_stream(websocket: WebSocket) -> None:
     stream_sid: str = ""
     dg_connection = deepgram.listen.asynclive.v("1")
     audio_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+    llm_queue: asyncio.Queue[str | None] = asyncio.Queue()
     tts_queue: asyncio.Queue[str | None] = asyncio.Queue()
+    chat = gemini.start_chat(history=[])
 
     async def on_transcript(self, result, **kwargs) -> None:
         transcript = result.channel.alternatives[0].transcript
@@ -82,7 +97,7 @@ async def media_stream(websocket: WebSocket) -> None:
             return
         if result.is_final:
             print(f"[STT FINAL] {transcript}")
-            await tts_queue.put(transcript)
+            await llm_queue.put(transcript)
         else:
             print(f"[STT partial] {transcript}")
 
@@ -112,6 +127,21 @@ async def media_stream(websocket: WebSocket) -> None:
             print(f"[deepgram] errore: {exc}")
         finally:
             await dg_connection.finish()
+
+    async def llm_worker() -> None:
+        try:
+            while True:
+                text = await llm_queue.get()
+                if text is None:
+                    break
+                print(f"[LLM] input: {text}")
+                response = await chat.send_message_async(text)
+                reply = response.text.strip()
+                print(f"[LLM] risposta: {reply}")
+                if reply:
+                    await tts_queue.put(reply)
+        except Exception as exc:
+            print(f"[LLM] errore: {exc}")
 
     async def tts_sender() -> None:
         headers = {
@@ -156,6 +186,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 print(f"[TTS] errore: {exc}")
 
     dg_task = asyncio.create_task(deepgram_sender())
+    llm_task = asyncio.create_task(llm_worker())
     tts_task = asyncio.create_task(tts_sender())
 
     try:
@@ -185,6 +216,8 @@ async def media_stream(websocket: WebSocket) -> None:
         print(f"[stream] errore ricezione: {exc}")
     finally:
         await audio_queue.put(None)
+        await llm_queue.put(None)
         await tts_queue.put(None)
         await dg_task
+        await llm_task
         await tts_task
