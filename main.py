@@ -8,11 +8,12 @@ import asyncio
 import base64
 import json
 
-from fastapi import FastAPI, Request, WebSocket
+from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import Response
 from supabase import create_client, Client
+from twilio.request_validator import RequestValidator
 from twilio.rest import Client as TwilioClient
-from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
+from twilio.twiml.voice_response import VoiceResponse, Connect
 import httpx
 
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
@@ -28,6 +29,7 @@ twilio = TwilioClient(
     os.environ["TWILIO_ACCOUNT_SID"],
     os.environ["TWILIO_AUTH_TOKEN"],
 )
+tw_validator = RequestValidator(os.environ["TWILIO_AUTH_TOKEN"])
 
 deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
 
@@ -42,6 +44,13 @@ async def health() -> dict:
 
 @app.post("/incoming-call")
 async def incoming_call(request: Request) -> Response:
+    form = dict(await request.form())
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    url = str(request.url).replace(f"{request.url.scheme}://", f"{proto}://", 1)
+    signature = request.headers.get("X-Twilio-Signature", "")
+    if not tw_validator.validate(url, form, signature):
+        raise HTTPException(status_code=403, detail="Invalid Twilio signature")
+
     host = request.headers.get("host", request.base_url.hostname)
     stream_url = f"wss://{host}/media-stream"
 
@@ -151,6 +160,9 @@ async def media_stream(websocket: WebSocket) -> None:
 
     try:
         while True:
+            if dg_task.done():
+                print("[stream] deepgram terminato inaspettatamente — chiudo chiamata")
+                break
             message = await websocket.receive_text()
             data = json.loads(message)
             event = data.get("event")
