@@ -58,11 +58,14 @@ async def media_stream(websocket: WebSocket) -> None:
     dg_connection = deepgram.listen.asynclive.v("1")
 
     async def on_transcript(self, result, **kwargs) -> None:
+        print(f"[deepgram] callback ricevuto — is_final={result.is_final}")
         transcript = result.channel.alternatives[0].transcript
         if transcript:
             is_final = result.is_final
             tag = "FINAL" if is_final else "partial"
             print(f"[STT {tag}] {transcript}")
+        else:
+            print("[deepgram] callback con trascrizione vuota")
 
     dg_connection.on(LiveTranscriptionEvents.Transcript, on_transcript)
 
@@ -88,12 +91,17 @@ async def media_stream(websocket: WebSocket) -> None:
 
             if event == "media":
                 audio = base64.b64decode(data["media"]["payload"])
+                print(f"[twilio] media ricevuto — {len(audio)} bytes → invio a deepgram")
                 await dg_connection.send(audio)
+            elif event == "connected":
+                print("[twilio] connected")
             elif event == "start":
                 print(f"[stream] avviato — callSid={data['start'].get('callSid')}")
             elif event == "stop":
                 print("[stream] terminato")
                 break
+            else:
+                print(f"[twilio] evento sconosciuto: {event}")
     except Exception as exc:
         print(f"[stream] errore: {exc}")
     finally:
