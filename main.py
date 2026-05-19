@@ -13,7 +13,8 @@ from fastapi.responses import Response
 from supabase import create_client, Client
 from twilio.rest import Client as TwilioClient
 from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
-from cartesia import AsyncCartesia
+import httpx
+
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 
 app = FastAPI(title="dance-voice-agent")
@@ -29,9 +30,9 @@ twilio = TwilioClient(
 )
 
 deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
-cartesia = AsyncCartesia(api_key=os.environ["CARTESIA_API_KEY"])
 
 CARTESIA_VOICE_ID = "36d94908-c5b9-4014-b521-e69aee5bead0"
+CARTESIA_API_URL = "https://api.cartesia.ai/tts/sse"
 
 
 @app.get("/health")
@@ -104,32 +105,46 @@ async def media_stream(websocket: WebSocket) -> None:
             await dg_connection.finish()
 
     async def tts_sender() -> None:
-        try:
-            while True:
-                text = await tts_queue.get()
-                if text is None:
-                    break
-                print(f"[TTS] sintetizzando: {text}")
-                async for chunk in cartesia.tts.sse(
-                    model_id="sonic-2",
-                    transcript=text,
-                    voice={"mode": "id", "id": CARTESIA_VOICE_ID},
-                    output_format={
-                        "container": "raw",
-                        "encoding": "pcm_mulaw",
-                        "sample_rate": 8000,
-                    },
-                    language="it",
-                ):
-                    if chunk.audio:
-                        payload = base64.b64encode(chunk.audio).decode()
-                        await websocket.send_text(json.dumps({
-                            "event": "media",
-                            "streamSid": stream_sid,
-                            "media": {"payload": payload},
-                        }))
-        except Exception as exc:
-            print(f"[TTS] errore: {exc}")
+        headers = {
+            "X-API-Key": os.environ["CARTESIA_API_KEY"],
+            "Cartesia-Version": "2024-06-10",
+            "Content-Type": "application/json",
+        }
+        body = {
+            "model_id": "sonic-2",
+            "voice": {"mode": "id", "id": CARTESIA_VOICE_ID},
+            "output_format": {
+                "container": "raw",
+                "encoding": "pcm_mulaw",
+                "sample_rate": 8000,
+            },
+            "language": "it",
+        }
+        async with httpx.AsyncClient(timeout=30.0) as http:
+            try:
+                while True:
+                    text = await tts_queue.get()
+                    if text is None:
+                        break
+                    print(f"[TTS] sintetizzando: {text}")
+                    async with http.stream(
+                        "POST", CARTESIA_API_URL,
+                        headers=headers,
+                        json={**body, "transcript": text},
+                    ) as response:
+                        async for line in response.aiter_lines():
+                            if not line.startswith("data: "):
+                                continue
+                            chunk = json.loads(line[6:])
+                            audio_b64 = chunk.get("audio") or chunk.get("data")
+                            if audio_b64:
+                                await websocket.send_text(json.dumps({
+                                    "event": "media",
+                                    "streamSid": stream_sid,
+                                    "media": {"payload": audio_b64},
+                                }))
+            except Exception as exc:
+                print(f"[TTS] errore: {exc}")
 
     dg_task = asyncio.create_task(deepgram_sender())
     tts_task = asyncio.create_task(tts_sender())
