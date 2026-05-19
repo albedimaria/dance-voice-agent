@@ -17,7 +17,7 @@ from twilio.rest import Client as TwilioClient
 from twilio.twiml.voice_response import VoiceResponse, Connect
 import httpx
 
-import google.generativeai as genai
+from openai import AsyncOpenAI
 
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 
@@ -36,15 +36,13 @@ tw_validator = RequestValidator(os.environ["TWILIO_AUTH_TOKEN"])
 
 deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-gemini = genai.GenerativeModel(
-    model_name="gemini-2.0-flash",
-    system_instruction=(
-        "Sei un assistente vocale della scuola di ballo Ritmo Caliente. "
-        "Rispondi sempre in italiano, con frasi brevi e naturali adatte al parlato. "
-        "Non usare elenchi, markdown o simboli speciali. "
-        "Sii cordiale e conciso."
-    ),
+openai = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+SYSTEM_PROMPT = (
+    "Sei un assistente vocale della scuola di ballo Ritmo Caliente. "
+    "Rispondi sempre in italiano, con frasi brevi e naturali adatte al parlato. "
+    "Non usare elenchi, markdown o simboli speciali. "
+    "Sii cordiale e conciso."
 )
 
 CARTESIA_VOICE_ID = "36d94908-c5b9-4014-b521-e69aee5bead0"
@@ -90,7 +88,7 @@ async def media_stream(websocket: WebSocket) -> None:
     audio_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
     llm_queue: asyncio.Queue[str | None] = asyncio.Queue()
     tts_queue: asyncio.Queue[str | None] = asyncio.Queue()
-    chat = gemini.start_chat(history=[])
+    history: list[dict] = []
 
     async def on_transcript(self, result, **kwargs) -> None:
         transcript = result.channel.alternatives[0].transcript
@@ -135,14 +133,20 @@ async def media_stream(websocket: WebSocket) -> None:
             if text is None:
                 break
             print(f"[LLM] input: {text}")
+            history.append({"role": "user", "content": text})
             try:
-                response = await chat.send_message_async(text)
-                reply = response.text.strip()
+                response = await openai.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "system", "content": SYSTEM_PROMPT}] + history,
+                )
+                reply = response.choices[0].message.content.strip()
+                history.append({"role": "assistant", "content": reply})
                 print(f"[LLM] risposta: {reply}")
                 if reply:
                     await tts_queue.put(reply)
             except Exception:
                 print(f"[LLM] errore:\n{traceback.format_exc()}")
+                history.pop()
 
     async def tts_sender() -> None:
         headers = {
