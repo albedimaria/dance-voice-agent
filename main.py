@@ -279,6 +279,7 @@ async def media_stream(websocket: WebSocket) -> None:
     tts_queue: asyncio.Queue[str | None] = asyncio.Queue()
     history: list[dict] = []
     is_speaking: bool = False
+    llm_busy: bool = False
     call_start: float = time.time()
     student_id: str | None = None
     tools_called: set[str] = set()
@@ -351,10 +352,15 @@ async def media_stream(websocket: WebSocket) -> None:
             await dg_connection.finish()
 
     async def llm_worker() -> None:
+        nonlocal llm_busy
         while True:
             text = await llm_queue.get()
             if text is None:
                 break
+            if llm_busy:
+                print(f"[LLM] occupato, input scartato: {text}")
+                continue
+            llm_busy = True
             print(f"[LLM] input: {text}")
             history.append({"role": "user", "content": text})
             try:
@@ -415,6 +421,8 @@ async def media_stream(websocket: WebSocket) -> None:
             except Exception:
                 print(f"[LLM] errore:\n{traceback.format_exc()}")
                 history.pop()
+            finally:
+                llm_busy = False
 
     async def tts_sender() -> None:
         nonlocal is_speaking
