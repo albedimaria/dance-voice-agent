@@ -5,6 +5,7 @@ load_dotenv()
 import os
 
 import asyncio
+import audioop
 import base64
 import json
 import traceback
@@ -15,7 +16,6 @@ from supabase import create_client, Client
 from twilio.request_validator import RequestValidator
 from twilio.rest import Client as TwilioClient
 from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
-import httpx
 
 from openai import AsyncOpenAI
 
@@ -168,7 +168,7 @@ async def incoming_call(request: Request) -> Response:
 
     response = VoiceResponse()
     response.say(
-        "holaa, qui Ritmo Caliente! la tua chiamata verrà trasferita a un operatore!",
+        "holaa, qui Ritmo Caliente!",
         language="it-IT",
     )
     connect = Connect()
@@ -282,12 +282,6 @@ async def media_stream(websocket: WebSocket) -> None:
                 history.pop()
 
     async def tts_sender() -> None:
-        voice_id = os.environ["ELEVENLABS_VOICE_ID"]
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
-        headers = {
-            "xi-api-key": os.environ["ELEVENLABS_API_KEY"],
-            "Content-Type": "application/json",
-        }
         # mulaw 8kHz = 8000 samples/s × 1 byte = 160 bytes per 20ms frame
         FRAME = 160
 
@@ -298,36 +292,34 @@ async def media_stream(websocket: WebSocket) -> None:
                 "media": {"payload": base64.b64encode(data).decode()},
             }))
 
-        async with httpx.AsyncClient(timeout=30.0) as http:
+        while True:
+            text = await tts_queue.get()
+            if text is None:
+                break
+            print(f"[TTS] sintetizzando: {text}")
             try:
-                while True:
-                    text = await tts_queue.get()
-                    if text is None:
-                        break
-                    print(f"[TTS] sintetizzando: {text}")
-                    async with http.stream(
-                        "POST", url,
-                        headers=headers,
-                        json={
-                            "text": text,
-                            "model_id": "eleven_turbo_v2_5",
-                            "output_format": "ulaw_8000",
-                        },
-                    ) as response:
-                        if response.status_code != 200:
-                            body = await response.aread()
-                            print(f"[TTS] errore HTTP {response.status_code}: {body}")
+                buf = b""
+                ratecv_state = None
+                async with openai.audio.speech.with_streaming_response.create(
+                    model="tts-1",
+                    voice="nova",
+                    input=text,
+                    response_format="pcm",
+                ) as response:
+                    async for pcm_chunk in response.iter_bytes(chunk_size=4096):
+                        if not pcm_chunk:
                             continue
-                        buf = b""
-                        async for chunk in response.aiter_bytes():
-                            if not chunk:
-                                continue
-                            buf += chunk
-                            while len(buf) >= FRAME:
-                                await _send_frame(buf[:FRAME])
-                                buf = buf[FRAME:]
-                        if buf:
-                            await _send_frame(buf)
+                        # resample 24kHz PCM s16le → 8kHz, then linear→mulaw
+                        resampled, ratecv_state = audioop.ratecv(
+                            pcm_chunk, 2, 1, 24000, 8000, ratecv_state
+                        )
+                        mulaw = audioop.lin2ulaw(resampled, 2)
+                        buf += mulaw
+                        while len(buf) >= FRAME:
+                            await _send_frame(buf[:FRAME])
+                            buf = buf[FRAME:]
+                if buf:
+                    await _send_frame(buf)
             except Exception as exc:
                 print(f"[TTS] errore: {exc}")
 
