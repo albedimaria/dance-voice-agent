@@ -259,12 +259,16 @@ async def media_stream(websocket: WebSocket) -> None:
             history.append({"role": "user", "content": text})
             try:
                 messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
-                while True:
-                    response = await openai.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=messages,
-                        tools=OPENAI_TOOLS,
-                        tool_choice="auto",
+                max_iterations = 10
+                for _ in range(max_iterations):
+                    response = await asyncio.wait_for(
+                        openai.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=messages,
+                            tools=OPENAI_TOOLS,
+                            tool_choice="auto",
+                        ),
+                        timeout=10.0,
                     )
                     msg = response.choices[0].message
                     messages.append(msg)
@@ -282,7 +286,9 @@ async def media_stream(websocket: WebSocket) -> None:
                             elif fn == "create_recovery":
                                 result = await create_recovery(supabase, **args)
                             elif fn == "notify_secretary":
-                                result = await notify_secretary(caller_phone=caller_phone, **args)
+                                result = await notify_secretary(
+                                    caller_phone=caller_phone, twilio_client=twilio, **args
+                                )
                             else:
                                 result = {"error": f"tool {fn!r} non implementato"}
                             print(f"[LLM] tool result: {result}")
@@ -324,10 +330,11 @@ async def media_stream(websocket: WebSocket) -> None:
                 ratecv_state = None
                 is_speaking = True
                 async with openai.audio.speech.with_streaming_response.create(
-                    model="tts-1-hd",
+                    model="tts-1",
                     voice="nova",
                     input=text,
                     response_format="pcm",
+                    timeout=10.0,
                 ) as response:
                     async for pcm_chunk in response.iter_bytes(chunk_size=4096):
                         if not is_speaking:
@@ -367,7 +374,6 @@ async def media_stream(websocket: WebSocket) -> None:
 
             if event == "media":
                 audio = base64.b64decode(data["media"]["payload"])
-                print(f"[twilio] media — {len(audio)} bytes")
                 await audio_queue.put(audio)
             elif event == "connected":
                 print("[twilio] connected")
@@ -375,9 +381,6 @@ async def media_stream(websocket: WebSocket) -> None:
                 stream_sid = data["start"]["streamSid"]
                 caller_phone = data["start"].get("customParameters", {}).get("from", "")
                 print(f"[stream] avviato — callSid={data['start'].get('callSid')} from={caller_phone}")
-                await tts_queue.put(
-                    "Ciao! Sono TropicoCHETA, l'assistente di Ritmo Caliente. Come posso aiutarti?"
-                )
                 if caller_phone:
                     student = await get_student_by_phone(supabase, caller_phone)
                     if student:
@@ -393,6 +396,9 @@ async def media_stream(websocket: WebSocket) -> None:
                         })
                     else:
                         print(f"[DB] numero non trovato: {caller_phone}")
+                await tts_queue.put(
+                    "Ciao! Sono TropicoCHETA, l'assistente di Ritmo Caliente. Come posso aiutarti?"
+                )
             elif event == "stop":
                 print("[stream] terminato")
                 break

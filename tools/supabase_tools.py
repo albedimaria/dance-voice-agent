@@ -33,7 +33,7 @@ async def get_courses(
         if level:
             q = q.eq("level", level)
         if location:
-            q = q.eq("location", location)
+            q = q.ilike("location", f"%{location}%")
         result = q.order("day_of_week").order("time_start").execute()
         return result.data or []
 
@@ -91,13 +91,9 @@ async def create_booking(
     return await asyncio.to_thread(_query)
 
 
-async def notify_secretary(message: str, caller_phone: str) -> dict:
+async def notify_secretary(message: str, caller_phone: str, twilio_client: TwilioClient) -> dict:
     def _send():
-        client = TwilioClient(
-            os.environ["TWILIO_ACCOUNT_SID"],
-            os.environ["TWILIO_AUTH_TOKEN"],
-        )
-        client.messages.create(
+        twilio_client.messages.create(
             from_=os.environ["TWILIO_WHATSAPP_FROM"],
             to=os.environ["SECRETARY_WHATSAPP"],
             body=f"Chiamata da {caller_phone}:\n{message}",
