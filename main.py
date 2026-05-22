@@ -11,8 +11,6 @@ import json
 import time
 import traceback
 
-import httpx
-
 from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import Response
 from supabase import create_client, Client
@@ -407,15 +405,6 @@ async def media_stream(websocket: WebSocket) -> None:
                 print(f"[LLM] errore:\n{traceback.format_exc()}")
                 history.pop()
 
-    _el_api_key = os.environ["ELEVENLABS_API_KEY"]
-    _el_voice_id = os.environ["ELEVENLABS_VOICE_ID"]
-    _el_url = f"https://api.elevenlabs.io/v1/text-to-speech/{_el_voice_id}/stream"
-    _el_headers = {
-        "xi-api-key": _el_api_key,
-        "Content-Type": "application/json",
-        "Accept": "audio/basic",  # mulaw
-    }
-
     async def tts_sender() -> None:
         nonlocal is_speaking
         FRAME = 160  # 20ms @ mulaw 8kHz
@@ -427,48 +416,43 @@ async def media_stream(websocket: WebSocket) -> None:
                 "media": {"payload": base64.b64encode(data).decode()},
             }))
 
-        async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=30.0, write=10.0, pool=5.0)) as client:
-            while True:
-                text = await tts_queue.get()
-                if text is None:
-                    break
-                print(f"[TTS] sintetizzando: {text}")
-                try:
-                    buf = b""
-                    is_speaking = True
-                    async with client.stream(
-                        "POST",
-                        _el_url,
-                        headers=_el_headers,
-                        json={
-                            "text": text,
-                            "model_id": "eleven_turbo_v2_5",
-                            "output_format": "ulaw_8000",
-                        },
-                    ) as resp:
-                        print(f"[TTS] ElevenLabs HTTP {resp.status_code}")
-                        if resp.status_code != 200:
-                            body = await resp.aread()
-                            print(f"[TTS] ElevenLabs errore body: {body.decode(errors='replace')}")
+        while True:
+            text = await tts_queue.get()
+            if text is None:
+                break
+            print(f"[TTS] sintetizzando: {text}")
+            try:
+                buf = b""
+                ratecv_state = None
+                is_speaking = True
+                async with openai.audio.speech.with_streaming_response.create(
+                    model="tts-1",
+                    voice="nova",
+                    input=text,
+                    response_format="pcm",
+                    timeout=10.0,
+                ) as response:
+                    async for pcm_chunk in response.iter_bytes(chunk_size=4096):
+                        if not is_speaking:
+                            break
+                        if not pcm_chunk:
                             continue
-                        async for chunk in resp.aiter_bytes(chunk_size=4096):
+                        resampled, ratecv_state = audioop.ratecv(
+                            pcm_chunk, 2, 1, 24000, 8000, ratecv_state
+                        )
+                        mulaw = audioop.lin2ulaw(resampled, 2)
+                        buf += mulaw
+                        while len(buf) >= FRAME:
                             if not is_speaking:
                                 break
-                            if not chunk:
-                                continue
-                            # output is already mulaw 8kHz — no conversion needed
-                            buf += chunk
-                            while len(buf) >= FRAME:
-                                if not is_speaking:
-                                    break
-                                await _send_frame(buf[:FRAME])
-                                buf = buf[FRAME:]
-                    if is_speaking and buf:
-                        await _send_frame(buf)
-                except Exception as exc:
-                    print(f"[TTS] errore: {traceback.format_exc()}")
-                finally:
-                    is_speaking = False
+                            await _send_frame(buf[:FRAME])
+                            buf = buf[FRAME:]
+                if is_speaking and buf:
+                    await _send_frame(buf)
+            except Exception as exc:
+                print(f"[TTS] errore: {exc}")
+            finally:
+                is_speaking = False
 
     dg_task = asyncio.create_task(deepgram_sender())
     llm_task = asyncio.create_task(llm_worker())
