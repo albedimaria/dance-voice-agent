@@ -373,7 +373,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 for _ in range(max_iterations):
                     response = await asyncio.wait_for(
                         openai.chat.completions.create(
-                            model="gpt-4o-mini",
+                            model="gpt-4o",
                             messages=messages,
                             tools=OPENAI_TOOLS,
                             tool_choice="auto",
