@@ -296,11 +296,12 @@ async def media_stream(websocket: WebSocket) -> None:
         }))
         print("[barge-in] TTS interrotto")
 
-    async def on_speech_started(result, **kwargs) -> None:
+    async def on_speech_started(*args, **kwargs) -> None:
         print("[VAD] parlato rilevato")
         await _barge_in()
 
-    async def on_transcript(result, **kwargs) -> None:
+    async def on_transcript(*args, **kwargs) -> None:
+        result = args[0] if args else kwargs.get("result")
         transcript = result.channel.alternatives[0].transcript
         if not transcript:
             return
