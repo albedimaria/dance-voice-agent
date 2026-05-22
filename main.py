@@ -514,6 +514,13 @@ async def media_stream(websocket: WebSocket) -> None:
                         })
                     else:
                         print(f"[DB] numero non trovato: {caller_phone}")
+                settings = await get_settings(supabase)
+                if settings.get("trial_week_active") == "true":
+                    history.append({
+                        "role": "system",
+                        "content": "CONTESTO: Settimana di prova attiva. Tutti i corsi sono gratuiti e aperti.",
+                    })
+                    print("[settings] settimana di prova attiva")
                 await tts_queue.put(
                     "Ciao! Sono TropicoCHETA, l'assistente di Ritmo Caliente. Come posso aiutarti?"
                 )
