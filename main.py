@@ -304,10 +304,8 @@ async def media_stream(websocket: WebSocket) -> None:
 
     async def on_transcript(*args, **kwargs) -> None:
         try:
-            print(f"[STT DEBUG] args={type(args[0]).__name__ if args else 'none'} kwargs={list(kwargs.keys())}")
-            result = args[0] if args else kwargs.get("result")
+            result = kwargs.get("result")
             if result is None:
-                print("[STT DEBUG] result è None — skip")
                 return
             transcript = result.channel.alternatives[0].transcript
             if not transcript:
