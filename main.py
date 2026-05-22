@@ -8,6 +8,7 @@ import asyncio
 import audioop
 import base64
 import json
+import re
 import time
 import traceback
 
@@ -288,7 +289,7 @@ async def media_stream(websocket: WebSocket) -> None:
     student_id: str | None = None
     tools_called: set[str] = set()
     last_barge_in_time: float = 0.0
-    BARGE_IN_COOLDOWN: float = 1.5
+    BARGE_IN_COOLDOWN: float = 0.8
 
     async def _barge_in() -> None:
         nonlocal is_speaking, last_barge_in_time
@@ -320,6 +321,11 @@ async def media_stream(websocket: WebSocket) -> None:
                 return
             if result.is_final:
                 print(f"[STT FINAL] {transcript}")
+                while not llm_queue.empty():
+                    try:
+                        llm_queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        break
                 await llm_queue.put(transcript)
             else:
                 print(f"[STT partial] {transcript}")
@@ -357,71 +363,123 @@ async def media_stream(websocket: WebSocket) -> None:
 
     async def llm_worker() -> None:
         nonlocal llm_busy
+
+        sentence_re = re.compile(r'(?<=[.!?])\s+')
+
+        async def _dispatch_tool(tc_id: str, fn: str, raw_args: str) -> tuple[str, dict]:
+            try:
+                args = json.loads(raw_args)
+            except Exception:
+                return tc_id, {"error": "argomenti JSON non validi"}
+            print(f"[LLM] tool call: {fn}({args})")
+            tools_called.add(fn)
+            if fn == "get_courses":
+                result = await get_courses(supabase, **args)
+            elif fn == "create_booking":
+                result = await create_booking(supabase, **args)
+            elif fn == "create_recovery":
+                result = await create_recovery(supabase, **args)
+            elif fn == "notify_secretary":
+                result = await notify_secretary(caller_phone=caller_phone, twilio_client=twilio, **args)
+            elif fn == "get_settings":
+                result = await get_settings(supabase)
+            elif fn == "check_trial_used":
+                result = await check_trial_used(supabase, **args)
+            elif fn == "create_trial_session":
+                result = await create_trial_session(supabase, **args)
+            elif fn == "get_pricing":
+                result = get_pricing(**args)
+            else:
+                result = {"error": f"tool {fn!r} non implementato"}
+            print(f"[LLM] tool result ({fn}): {result}")
+            return tc_id, result
+
         while True:
             text = await llm_queue.get()
             if text is None:
                 break
-            if llm_busy:
-                print(f"[LLM] occupato, input scartato: {text}")
-                continue
             llm_busy = True
             print(f"[LLM] input: {text}")
             history.append({"role": "user", "content": text})
             try:
-                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
-                max_iterations = 10
-                for _ in range(max_iterations):
-                    response = await asyncio.wait_for(
+                # keep last 20 messages (10 turns) to limit token usage
+                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history[-20:]
+                for _ in range(10):
+                    tool_calls_acc: dict[int, dict] = {}
+                    text_acc = ""
+                    sentence_buf = ""
+
+                    stream = await asyncio.wait_for(
                         openai.chat.completions.create(
                             model="gpt-4o",
                             messages=messages,
                             tools=OPENAI_TOOLS,
                             tool_choice="auto",
+                            stream=True,
                         ),
                         timeout=10.0,
                     )
-                    msg = response.choices[0].message
-                    messages.append(msg)
 
-                    if msg.tool_calls:
-                        for tc in msg.tool_calls:
-                            fn = tc.function.name
-                            args = json.loads(tc.function.arguments)
-                            print(f"[LLM] tool call: {fn}({args})")
-                            tools_called.add(fn)
-                            if fn == "get_courses":
-                                result = await get_courses(supabase, **args)
-                            elif fn == "create_booking":
-                                result = await create_booking(supabase, **args)
-                            elif fn == "create_recovery":
-                                result = await create_recovery(supabase, **args)
-                            elif fn == "notify_secretary":
-                                result = await notify_secretary(
-                                    caller_phone=caller_phone, twilio_client=twilio, **args
-                                )
-                            elif fn == "get_settings":
-                                result = await get_settings(supabase)
-                            elif fn == "check_trial_used":
-                                result = await check_trial_used(supabase, **args)
-                            elif fn == "create_trial_session":
-                                result = await create_trial_session(supabase, **args)
-                            elif fn == "get_pricing":
-                                result = get_pricing(**args)
-                            else:
-                                result = {"error": f"tool {fn!r} non implementato"}
-                            print(f"[LLM] tool result: {result}")
+                    async for chunk in stream:
+                        if not chunk.choices:
+                            continue
+                        delta = chunk.choices[0].delta
+
+                        if delta.tool_calls:
+                            for tc in delta.tool_calls:
+                                idx = tc.index
+                                if idx not in tool_calls_acc:
+                                    tool_calls_acc[idx] = {"id": "", "name": "", "arguments": ""}
+                                if tc.id:
+                                    tool_calls_acc[idx]["id"] = tc.id
+                                if tc.function:
+                                    if tc.function.name:
+                                        tool_calls_acc[idx]["name"] += tc.function.name
+                                    if tc.function.arguments:
+                                        tool_calls_acc[idx]["arguments"] += tc.function.arguments
+
+                        elif delta.content:
+                            text_acc += delta.content
+                            sentence_buf += delta.content
+                            while True:
+                                m = sentence_re.search(sentence_buf)
+                                if not m:
+                                    break
+                                sentence = sentence_buf[:m.start() + 1].strip()
+                                sentence_buf = sentence_buf[m.end():]
+                                if sentence:
+                                    await tts_queue.put(sentence)
+
+                    if tool_calls_acc:
+                        messages.append({
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": tc["id"],
+                                    "type": "function",
+                                    "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                                }
+                                for tc in tool_calls_acc.values()
+                            ],
+                        })
+                        results = await asyncio.gather(*[
+                            _dispatch_tool(tc["id"], tc["name"], tc["arguments"])
+                            for tc in tool_calls_acc.values()
+                        ])
+                        for tc_id, result in results:
                             messages.append({
                                 "role": "tool",
-                                "tool_call_id": tc.id,
+                                "tool_call_id": tc_id,
                                 "content": json.dumps(result, ensure_ascii=False),
                             })
                     else:
-                        reply = (msg.content or "").strip()
-                        history.append({"role": "assistant", "content": reply})
-                        print(f"[LLM] risposta: {reply}")
-                        if reply:
-                            await tts_queue.put(reply)
+                        if sentence_buf.strip():
+                            await tts_queue.put(sentence_buf.strip())
+                        history.append({"role": "assistant", "content": text_acc})
+                        print(f"[LLM] risposta: {text_acc}")
                         break
+
             except Exception:
                 print(f"[LLM] errore:\n{traceback.format_exc()}")
                 history.pop()
