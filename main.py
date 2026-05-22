@@ -61,7 +61,11 @@ OPENAI_TOOLS = [
                     },
                     "location": {
                         "type": "string",
-                        "description": "Filtra per sede (es. 'Milano Centro', 'Navigli').",
+                        "description": "Filtra per sede (es. 'AIDA', 'TIGER').",
+                    },
+                    "instructor": {
+                        "type": "string",
+                        "description": "Filtra per nome istruttore (ricerca parziale, es. 'Marco', 'Rossi').",
                     },
                 },
                 "required": [],

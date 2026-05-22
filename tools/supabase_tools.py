@@ -23,6 +23,7 @@ async def get_courses(
     supabase: Client,
     level: str | None = None,
     location: str | None = None,
+    instructor: str | None = None,
 ) -> list[dict]:
     def _query():
         q = (
@@ -34,6 +35,8 @@ async def get_courses(
             q = q.eq("level", level)
         if location:
             q = q.ilike("location", f"%{location}%")
+        if instructor:
+            q = q.ilike("instructor", f"%{instructor}%")
         result = q.order("day_of_week").order("time_start").execute()
         return result.data or []
 

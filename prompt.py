@@ -55,7 +55,8 @@ get_courses prima di rispondere — non rispondere mai a domande sui corsi senza
 Raccogli: corso desiderato, data, eventuali preferenze di sede.
 Verifica disponibilità con get_courses prima di confermare qualsiasi prenotazione.
 Conferma sempre ad alta voce prima di chiamare create_booking.
-Quando l'utente chiede di un istruttore specifico, chiama get_courses senza passare il parametro level.
+Quando l'utente menziona un istruttore, passa il nome come parametro instructor a get_courses (ricerca parziale — basta il cognome o il nome).
+Se la ricerca non restituisce risultati, riprova con una versione più corta del nome (es. solo cognome, o solo nome) prima di dire che non esiste.
 Non usare mai il livello dello studente come filtro automatico a meno che l'utente non lo chieda esplicitamente.
 
 ## Lezioni di prova e settimana di prova
