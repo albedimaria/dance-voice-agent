@@ -288,6 +288,16 @@ async def media_stream(websocket: WebSocket) -> None:
             "xi-api-key": os.environ["ELEVENLABS_API_KEY"],
             "Content-Type": "application/json",
         }
+        # mulaw 8kHz = 8000 samples/s × 1 byte = 160 bytes per 20ms frame
+        FRAME = 160
+
+        async def _send_frame(data: bytes) -> None:
+            await websocket.send_text(json.dumps({
+                "event": "media",
+                "streamSid": stream_sid,
+                "media": {"payload": base64.b64encode(data).decode()},
+            }))
+
         async with httpx.AsyncClient(timeout=30.0) as http:
             try:
                 while True:
@@ -304,13 +314,20 @@ async def media_stream(websocket: WebSocket) -> None:
                             "output_format": "ulaw_8000",
                         },
                     ) as response:
+                        if response.status_code != 200:
+                            body = await response.aread()
+                            print(f"[TTS] errore HTTP {response.status_code}: {body}")
+                            continue
+                        buf = b""
                         async for chunk in response.aiter_bytes():
-                            if chunk:
-                                await websocket.send_text(json.dumps({
-                                    "event": "media",
-                                    "streamSid": stream_sid,
-                                    "media": {"payload": base64.b64encode(chunk).decode()},
-                                }))
+                            if not chunk:
+                                continue
+                            buf += chunk
+                            while len(buf) >= FRAME:
+                                await _send_frame(buf[:FRAME])
+                                buf = buf[FRAME:]
+                        if buf:
+                            await _send_frame(buf)
             except Exception as exc:
                 print(f"[TTS] errore: {exc}")
 
