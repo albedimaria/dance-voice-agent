@@ -21,7 +21,7 @@ from openai import AsyncOpenAI
 
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 from prompt import SYSTEM_PROMPT
-from tools.supabase_tools import get_student_by_phone
+from tools.supabase_tools import get_student_by_phone, get_courses, create_booking, create_recovery, notify_secretary
 
 app = FastAPI(title="dance-voice-agent")
 
@@ -41,8 +41,112 @@ deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
 openai = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 
-CARTESIA_VOICE_ID = "36d94908-c5b9-4014-b521-e69aee5bead0"
-CARTESIA_API_URL = "https://api.cartesia.ai/tts/sse"
+OPENAI_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_courses",
+            "description": (
+                "Recupera i corsi attivi di Ritmo Caliente. "
+                "Usa questo tool per verificare disponibilità prima di confermare prenotazioni o recuperi."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "level": {
+                        "type": "string",
+                        "enum": ["base", "intermedio", "avanzato"],
+                        "description": "Filtra per livello del corso.",
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "Filtra per sede (es. 'Milano Centro', 'Navigli').",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_booking",
+            "description": (
+                "Prenota una lezione regolare per uno studente. "
+                "Chiama SOLO dopo aver confermato corso e data con il chiamante. "
+                "Verifica prima la disponibilità con get_courses."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "student_id": {
+                        "type": "string",
+                        "description": "UUID dello studente (da get_student_by_phone).",
+                    },
+                    "course_id": {
+                        "type": "string",
+                        "description": "UUID del corso (da get_courses).",
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Data della lezione in formato YYYY-MM-DD.",
+                    },
+                },
+                "required": ["student_id", "course_id", "date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_recovery",
+            "description": (
+                "Prenota un recupero per uno studente in un corso di livello inferiore. "
+                "Il sistema verifica automaticamente la compatibilità di livello e la capienza. "
+                "Chiama SOLO dopo aver confermato corso e data con il chiamante."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "student_id": {
+                        "type": "string",
+                        "description": "UUID dello studente (da get_student_by_phone).",
+                    },
+                    "course_id": {
+                        "type": "string",
+                        "description": "UUID del corso target (da get_courses).",
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Data del recupero in formato YYYY-MM-DD.",
+                    },
+                },
+                "required": ["student_id", "course_id", "date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "notify_secretary",
+            "description": (
+                "Invia un messaggio WhatsApp alla segreteria di Ritmo Caliente. "
+                "Usa questo tool quando il chiamante ha un problema che non riesci a risolvere autonomamente "
+                "(es. reclami, richieste speciali, pagamenti, situazioni fuori dalla tua competenza)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Descrizione chiara del problema o della richiesta del chiamante.",
+                    },
+                },
+                "required": ["message"],
+            },
+        },
+    },
+]
 
 
 @app.get("/health")
@@ -134,34 +238,55 @@ async def media_stream(websocket: WebSocket) -> None:
             print(f"[LLM] input: {text}")
             history.append({"role": "user", "content": text})
             try:
-                response = await openai.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "system", "content": SYSTEM_PROMPT}] + history,
-                )
-                reply = response.choices[0].message.content.strip()
-                history.append({"role": "assistant", "content": reply})
-                print(f"[LLM] risposta: {reply}")
-                if reply:
-                    await tts_queue.put(reply)
+                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
+                while True:
+                    response = await openai.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=messages,
+                        tools=OPENAI_TOOLS,
+                        tool_choice="auto",
+                    )
+                    msg = response.choices[0].message
+                    messages.append(msg)
+
+                    if msg.tool_calls:
+                        for tc in msg.tool_calls:
+                            fn = tc.function.name
+                            args = json.loads(tc.function.arguments)
+                            print(f"[LLM] tool call: {fn}({args})")
+                            if fn == "get_courses":
+                                result = await get_courses(supabase, **args)
+                            elif fn == "create_booking":
+                                result = await create_booking(supabase, **args)
+                            elif fn == "create_recovery":
+                                result = await create_recovery(supabase, **args)
+                            elif fn == "notify_secretary":
+                                result = await notify_secretary(caller_phone=caller_phone, **args)
+                            else:
+                                result = {"error": f"tool {fn!r} non implementato"}
+                            print(f"[LLM] tool result: {result}")
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": tc.id,
+                                "content": json.dumps(result, ensure_ascii=False),
+                            })
+                    else:
+                        reply = (msg.content or "").strip()
+                        history.append({"role": "assistant", "content": reply})
+                        print(f"[LLM] risposta: {reply}")
+                        if reply:
+                            await tts_queue.put(reply)
+                        break
             except Exception:
                 print(f"[LLM] errore:\n{traceback.format_exc()}")
                 history.pop()
 
     async def tts_sender() -> None:
+        voice_id = os.environ["ELEVENLABS_VOICE_ID"]
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
         headers = {
-            "X-API-Key": os.environ["CARTESIA_API_KEY"],
-            "Cartesia-Version": "2024-06-10",
+            "xi-api-key": os.environ["ELEVENLABS_API_KEY"],
             "Content-Type": "application/json",
-        }
-        body = {
-            "model_id": "sonic-2",
-            "voice": {"mode": "id", "id": CARTESIA_VOICE_ID},
-            "output_format": {
-                "container": "raw",
-                "encoding": "pcm_mulaw",
-                "sample_rate": 8000,
-            },
-            "language": "it",
         }
         async with httpx.AsyncClient(timeout=30.0) as http:
             try:
@@ -171,20 +296,20 @@ async def media_stream(websocket: WebSocket) -> None:
                         break
                     print(f"[TTS] sintetizzando: {text}")
                     async with http.stream(
-                        "POST", CARTESIA_API_URL,
+                        "POST", url,
                         headers=headers,
-                        json={**body, "transcript": text},
+                        json={
+                            "text": text,
+                            "model_id": "eleven_turbo_v2_5",
+                            "output_format": "ulaw_8000",
+                        },
                     ) as response:
-                        async for line in response.aiter_lines():
-                            if not line.startswith("data: "):
-                                continue
-                            chunk = json.loads(line[6:])
-                            audio_b64 = chunk.get("audio") or chunk.get("data")
-                            if audio_b64:
+                        async for chunk in response.aiter_bytes():
+                            if chunk:
                                 await websocket.send_text(json.dumps({
                                     "event": "media",
                                     "streamSid": stream_sid,
-                                    "media": {"payload": audio_b64},
+                                    "media": {"payload": base64.b64encode(chunk).decode()},
                                 }))
             except Exception as exc:
                 print(f"[TTS] errore: {exc}")
