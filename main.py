@@ -167,10 +167,6 @@ async def incoming_call(request: Request) -> Response:
     stream_url = f"wss://{host}/media-stream"
 
     response = VoiceResponse()
-    response.say(
-        "holaa, qui Ritmo Caliente!",
-        language="it-IT",
-    )
     connect = Connect()
     stream = Stream(url=stream_url)
     stream.parameter(name="from", value=form.get("From", ""))
@@ -374,6 +370,9 @@ async def media_stream(websocket: WebSocket) -> None:
                 stream_sid = data["start"]["streamSid"]
                 caller_phone = data["start"].get("customParameters", {}).get("from", "")
                 print(f"[stream] avviato — callSid={data['start'].get('callSid')} from={caller_phone}")
+                await tts_queue.put(
+                    "Ciao! Sono TropicoCHETA, l'assistente di Ritmo Caliente. Come posso aiutarti?"
+                )
                 if caller_phone:
                     student = await get_student_by_phone(supabase, caller_phone)
                     if student:
