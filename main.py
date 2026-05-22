@@ -282,12 +282,15 @@ async def media_stream(websocket: WebSocket) -> None:
     call_start: float = time.time()
     student_id: str | None = None
     tools_called: set[str] = set()
+    last_barge_in_time: float = 0.0
+    BARGE_IN_COOLDOWN: float = 1.5
 
     async def _barge_in() -> None:
-        nonlocal is_speaking
+        nonlocal is_speaking, last_barge_in_time
         if not is_speaking:
             return
         is_speaking = False
+        last_barge_in_time = time.time()
         while not tts_queue.empty():
             tts_queue.get_nowait()
         await websocket.send_text(json.dumps({
@@ -303,6 +306,9 @@ async def media_stream(websocket: WebSocket) -> None:
         result = args[0] if args else kwargs.get("result")
         transcript = result.channel.alternatives[0].transcript
         if not transcript:
+            return
+        if time.time() - last_barge_in_time < BARGE_IN_COOLDOWN:
+            print(f"[STT cooldown] ignorato: {transcript}")
             return
         if result.is_final:
             print(f"[STT FINAL] {transcript}")
