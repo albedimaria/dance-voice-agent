@@ -192,8 +192,10 @@ async def media_stream(websocket: WebSocket) -> None:
     llm_queue: asyncio.Queue[str | None] = asyncio.Queue()
     tts_queue: asyncio.Queue[str | None] = asyncio.Queue()
     history: list[dict] = []
+    is_speaking: bool = False
 
     async def on_transcript(self, result, **kwargs) -> None:
+        nonlocal is_speaking
         transcript = result.channel.alternatives[0].transcript
         if not transcript:
             return
@@ -202,6 +204,15 @@ async def media_stream(websocket: WebSocket) -> None:
             await llm_queue.put(transcript)
         else:
             print(f"[STT partial] {transcript}")
+            if is_speaking:
+                is_speaking = False
+                while not tts_queue.empty():
+                    tts_queue.get_nowait()
+                await websocket.send_text(json.dumps({
+                    "event": "clear",
+                    "streamSid": stream_sid,
+                }))
+                print("[barge-in] TTS interrotto")
 
     dg_connection.on(LiveTranscriptionEvents.Transcript, on_transcript)
 
@@ -282,6 +293,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 history.pop()
 
     async def tts_sender() -> None:
+        nonlocal is_speaking
         # mulaw 8kHz = 8000 samples/s × 1 byte = 160 bytes per 20ms frame
         FRAME = 160
 
@@ -300,6 +312,7 @@ async def media_stream(websocket: WebSocket) -> None:
             try:
                 buf = b""
                 ratecv_state = None
+                is_speaking = True
                 async with openai.audio.speech.with_streaming_response.create(
                     model="tts-1",
                     voice="nova",
@@ -307,6 +320,8 @@ async def media_stream(websocket: WebSocket) -> None:
                     response_format="pcm",
                 ) as response:
                     async for pcm_chunk in response.iter_bytes(chunk_size=4096):
+                        if not is_speaking:
+                            break
                         if not pcm_chunk:
                             continue
                         # resample 24kHz PCM s16le → 8kHz, then linear→mulaw
@@ -316,12 +331,16 @@ async def media_stream(websocket: WebSocket) -> None:
                         mulaw = audioop.lin2ulaw(resampled, 2)
                         buf += mulaw
                         while len(buf) >= FRAME:
+                            if not is_speaking:
+                                break
                             await _send_frame(buf[:FRAME])
                             buf = buf[FRAME:]
-                if buf:
+                if is_speaking and buf:
                     await _send_frame(buf)
             except Exception as exc:
                 print(f"[TTS] errore: {exc}")
+            finally:
+                is_speaking = False
 
     dg_task = asyncio.create_task(deepgram_sender())
     llm_task = asyncio.create_task(llm_worker())
