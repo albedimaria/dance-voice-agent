@@ -324,7 +324,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 ratecv_state = None
                 is_speaking = True
                 async with openai.audio.speech.with_streaming_response.create(
-                    model="tts-1",
+                    model="tts-1-hd",
                     voice="nova",
                     input=text,
                     response_format="pcm",
