@@ -303,19 +303,26 @@ async def media_stream(websocket: WebSocket) -> None:
         print("[VAD] parlato rilevato")
 
     async def on_transcript(*args, **kwargs) -> None:
-        result = args[0] if args else kwargs.get("result")
-        transcript = result.channel.alternatives[0].transcript
-        if not transcript:
-            return
-        if time.time() - last_barge_in_time < BARGE_IN_COOLDOWN:
-            print(f"[STT cooldown] ignorato: {transcript}")
-            return
-        if result.is_final:
-            print(f"[STT FINAL] {transcript}")
-            await llm_queue.put(transcript)
-        else:
-            print(f"[STT partial] {transcript}")
-            await _barge_in()
+        try:
+            print(f"[STT DEBUG] args={type(args[0]).__name__ if args else 'none'} kwargs={list(kwargs.keys())}")
+            result = args[0] if args else kwargs.get("result")
+            if result is None:
+                print("[STT DEBUG] result è None — skip")
+                return
+            transcript = result.channel.alternatives[0].transcript
+            if not transcript:
+                return
+            if time.time() - last_barge_in_time < BARGE_IN_COOLDOWN:
+                print(f"[STT cooldown] ignorato: {transcript}")
+                return
+            if result.is_final:
+                print(f"[STT FINAL] {transcript}")
+                await llm_queue.put(transcript)
+            else:
+                print(f"[STT partial] {transcript}")
+                await _barge_in()
+        except Exception:
+            print(f"[STT] errore on_transcript:\n{traceback.format_exc()}")
 
     dg_connection.on(LiveTranscriptionEvents.SpeechStarted, on_speech_started)
     dg_connection.on(LiveTranscriptionEvents.Transcript, on_transcript)
