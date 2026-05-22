@@ -298,7 +298,6 @@ async def media_stream(websocket: WebSocket) -> None:
 
     async def on_speech_started(*args, **kwargs) -> None:
         print("[VAD] parlato rilevato")
-        await _barge_in()
 
     async def on_transcript(*args, **kwargs) -> None:
         result = args[0] if args else kwargs.get("result")
@@ -310,7 +309,7 @@ async def media_stream(websocket: WebSocket) -> None:
             await llm_queue.put(transcript)
         else:
             print(f"[STT partial] {transcript}")
-            await _barge_in()  # fallback se SpeechStarted non ha già triggerato
+            await _barge_in()
 
     dg_connection.on(LiveTranscriptionEvents.SpeechStarted, on_speech_started)
     dg_connection.on(LiveTranscriptionEvents.Transcript, on_transcript)
