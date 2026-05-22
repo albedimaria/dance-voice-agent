@@ -110,6 +110,71 @@ RECOVERY_RULES: dict[str, list[str]] = {
 }
 
 
+async def get_settings(supabase: Client) -> dict:
+    def _query():
+        result = supabase.table("settings").select("key, value").execute()
+        return {row["key"]: row["value"] for row in (result.data or [])}
+
+    return await asyncio.to_thread(_query)
+
+
+async def check_trial_used(supabase: Client, student_id: str, course_id: str) -> bool:
+    def _query():
+        result = (
+            supabase.table("trial_sessions")
+            .select("id", count="exact")
+            .eq("student_id", student_id)
+            .eq("course_id", course_id)
+            .execute()
+        )
+        return (result.count or 0) > 0
+
+    return await asyncio.to_thread(_query)
+
+
+async def create_trial_session(
+    supabase: Client,
+    student_id: str,
+    course_id: str,
+    date: str,
+) -> dict:
+    def _query():
+        try:
+            result = (
+                supabase.table("trial_sessions")
+                .insert({
+                    "student_id": student_id,
+                    "course_id": course_id,
+                    "date": date,
+                })
+                .execute()
+            )
+            return result.data[0] if result.data else {"error": "Inserimento fallito."}
+        except Exception as exc:
+            msg = str(exc)
+            if "trial_sessions_student_course_unique" in msg or "unique" in msg.lower():
+                return {"error": "Lo studente ha già usato la lezione di prova per questo corso."}
+            return {"error": msg}
+
+    return await asyncio.to_thread(_query)
+
+
+def get_pricing(course_count: int) -> dict:
+    if course_count <= 0:
+        return {"error": "course_count deve essere almeno 1."}
+    base = 160
+    additional = 128
+    total = base + (course_count - 1) * additional
+    breakdown = [base] + [additional] * (course_count - 1)
+    return {
+        "total": total,
+        "currency": "EUR",
+        "course_count": course_count,
+        "breakdown": breakdown,
+        "note": f"Primo corso €{base}, ogni corso aggiuntivo €{additional} (−20%).",
+    }
+
+
 async def create_recovery(
     supabase: Client,
     student_id: str,

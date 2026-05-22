@@ -11,6 +11,8 @@ import json
 import time
 import traceback
 
+import httpx
+
 from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import Response
 from supabase import create_client, Client
@@ -22,7 +24,7 @@ from openai import AsyncOpenAI
 
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 from prompt import SYSTEM_PROMPT
-from tools.supabase_tools import get_student_by_phone, get_courses, create_booking, create_recovery, notify_secretary
+from tools.supabase_tools import get_student_by_phone, get_courses, create_booking, create_recovery, notify_secretary, get_settings, check_trial_used, create_trial_session, get_pricing
 
 app = FastAPI(title="dance-voice-agent")
 
@@ -147,6 +149,95 @@ OPENAI_TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_settings",
+            "description": (
+                "Legge le impostazioni globali della scuola (es. 'trial_week_active'). "
+                "Usalo per verificare se la settimana di prova è attiva prima di proporre lezioni di prova."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_trial_used",
+            "description": (
+                "Verifica se uno studente ha già usato la lezione di prova per un corso specifico. "
+                "Restituisce true se la prova è già stata usata, false altrimenti."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "student_id": {
+                        "type": "string",
+                        "description": "UUID dello studente.",
+                    },
+                    "course_id": {
+                        "type": "string",
+                        "description": "UUID del corso.",
+                    },
+                },
+                "required": ["student_id", "course_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_trial_session",
+            "description": (
+                "Registra una lezione di prova per uno studente in un corso. "
+                "Chiama solo se trial_week_active è true e check_trial_used ha restituito false. "
+                "Ogni studente può fare al massimo una prova per corso."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "student_id": {
+                        "type": "string",
+                        "description": "UUID dello studente.",
+                    },
+                    "course_id": {
+                        "type": "string",
+                        "description": "UUID del corso.",
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Data della lezione di prova in formato YYYY-MM-DD.",
+                    },
+                },
+                "required": ["student_id", "course_id", "date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_pricing",
+            "description": (
+                "Calcola il costo dell'abbonamento in base al numero di corsi. "
+                "Primo corso €160, ogni corso aggiuntivo €128 (−20%). "
+                "Usa quando il chiamante chiede informazioni sui prezzi."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "course_count": {
+                        "type": "integer",
+                        "description": "Numero di corsi a cui lo studente vuole iscriversi.",
+                    },
+                },
+                "required": ["course_count"],
+            },
+        },
+    },
 ]
 
 
@@ -207,11 +298,11 @@ async def media_stream(websocket: WebSocket) -> None:
         }))
         print("[barge-in] TTS interrotto")
 
-    async def on_speech_started(self, result, **kwargs) -> None:
+    async def on_speech_started(result, **kwargs) -> None:
         print("[VAD] parlato rilevato")
         await _barge_in()
 
-    async def on_transcript(self, result, **kwargs) -> None:
+    async def on_transcript(result, **kwargs) -> None:
         transcript = result.channel.alternatives[0].transcript
         if not transcript:
             return
@@ -289,6 +380,14 @@ async def media_stream(websocket: WebSocket) -> None:
                                 result = await notify_secretary(
                                     caller_phone=caller_phone, twilio_client=twilio, **args
                                 )
+                            elif fn == "get_settings":
+                                result = await get_settings(supabase)
+                            elif fn == "check_trial_used":
+                                result = await check_trial_used(supabase, **args)
+                            elif fn == "create_trial_session":
+                                result = await create_trial_session(supabase, **args)
+                            elif fn == "get_pricing":
+                                result = get_pricing(**args)
                             else:
                                 result = {"error": f"tool {fn!r} non implementato"}
                             print(f"[LLM] tool result: {result}")
@@ -308,10 +407,18 @@ async def media_stream(websocket: WebSocket) -> None:
                 print(f"[LLM] errore:\n{traceback.format_exc()}")
                 history.pop()
 
+    _el_api_key = os.environ["ELEVENLABS_API_KEY"]
+    _el_voice_id = os.environ["ELEVENLABS_VOICE_ID"]
+    _el_url = f"https://api.elevenlabs.io/v1/text-to-speech/{_el_voice_id}/stream"
+    _el_headers = {
+        "xi-api-key": _el_api_key,
+        "Content-Type": "application/json",
+        "Accept": "audio/basic",  # mulaw
+    }
+
     async def tts_sender() -> None:
         nonlocal is_speaking
-        # mulaw 8kHz = 8000 samples/s × 1 byte = 160 bytes per 20ms frame
-        FRAME = 160
+        FRAME = 160  # 20ms @ mulaw 8kHz
 
         async def _send_frame(data: bytes) -> None:
             await websocket.send_text(json.dumps({
@@ -320,44 +427,48 @@ async def media_stream(websocket: WebSocket) -> None:
                 "media": {"payload": base64.b64encode(data).decode()},
             }))
 
-        while True:
-            text = await tts_queue.get()
-            if text is None:
-                break
-            print(f"[TTS] sintetizzando: {text}")
-            try:
-                buf = b""
-                ratecv_state = None
-                is_speaking = True
-                async with openai.audio.speech.with_streaming_response.create(
-                    model="tts-1",
-                    voice="nova",
-                    input=text,
-                    response_format="pcm",
-                    timeout=10.0,
-                ) as response:
-                    async for pcm_chunk in response.iter_bytes(chunk_size=4096):
-                        if not is_speaking:
-                            break
-                        if not pcm_chunk:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=30.0, write=10.0, pool=5.0)) as client:
+            while True:
+                text = await tts_queue.get()
+                if text is None:
+                    break
+                print(f"[TTS] sintetizzando: {text}")
+                try:
+                    buf = b""
+                    is_speaking = True
+                    async with client.stream(
+                        "POST",
+                        _el_url,
+                        headers=_el_headers,
+                        json={
+                            "text": text,
+                            "model_id": "eleven_turbo_v2_5",
+                            "output_format": "ulaw_8000",
+                        },
+                    ) as resp:
+                        print(f"[TTS] ElevenLabs HTTP {resp.status_code}")
+                        if resp.status_code != 200:
+                            body = await resp.aread()
+                            print(f"[TTS] ElevenLabs errore body: {body.decode(errors='replace')}")
                             continue
-                        # resample 24kHz PCM s16le → 8kHz, then linear→mulaw
-                        resampled, ratecv_state = audioop.ratecv(
-                            pcm_chunk, 2, 1, 24000, 8000, ratecv_state
-                        )
-                        mulaw = audioop.lin2ulaw(resampled, 2)
-                        buf += mulaw
-                        while len(buf) >= FRAME:
+                        async for chunk in resp.aiter_bytes(chunk_size=4096):
                             if not is_speaking:
                                 break
-                            await _send_frame(buf[:FRAME])
-                            buf = buf[FRAME:]
-                if is_speaking and buf:
-                    await _send_frame(buf)
-            except Exception as exc:
-                print(f"[TTS] errore: {exc}")
-            finally:
-                is_speaking = False
+                            if not chunk:
+                                continue
+                            # output is already mulaw 8kHz — no conversion needed
+                            buf += chunk
+                            while len(buf) >= FRAME:
+                                if not is_speaking:
+                                    break
+                                await _send_frame(buf[:FRAME])
+                                buf = buf[FRAME:]
+                    if is_speaking and buf:
+                        await _send_frame(buf)
+                except Exception as exc:
+                    print(f"[TTS] errore: {traceback.format_exc()}")
+                finally:
+                    is_speaking = False
 
     dg_task = asyncio.create_task(deepgram_sender())
     llm_task = asyncio.create_task(llm_worker())
