@@ -194,8 +194,24 @@ async def media_stream(websocket: WebSocket) -> None:
     history: list[dict] = []
     is_speaking: bool = False
 
-    async def on_transcript(self, result, **kwargs) -> None:
+    async def _barge_in() -> None:
         nonlocal is_speaking
+        if not is_speaking:
+            return
+        is_speaking = False
+        while not tts_queue.empty():
+            tts_queue.get_nowait()
+        await websocket.send_text(json.dumps({
+            "event": "clear",
+            "streamSid": stream_sid,
+        }))
+        print("[barge-in] TTS interrotto")
+
+    async def on_speech_started(self, result, **kwargs) -> None:
+        print("[VAD] parlato rilevato")
+        await _barge_in()
+
+    async def on_transcript(self, result, **kwargs) -> None:
         transcript = result.channel.alternatives[0].transcript
         if not transcript:
             return
@@ -204,16 +220,9 @@ async def media_stream(websocket: WebSocket) -> None:
             await llm_queue.put(transcript)
         else:
             print(f"[STT partial] {transcript}")
-            if is_speaking:
-                is_speaking = False
-                while not tts_queue.empty():
-                    tts_queue.get_nowait()
-                await websocket.send_text(json.dumps({
-                    "event": "clear",
-                    "streamSid": stream_sid,
-                }))
-                print("[barge-in] TTS interrotto")
+            await _barge_in()  # fallback se SpeechStarted non ha già triggerato
 
+    dg_connection.on(LiveTranscriptionEvents.SpeechStarted, on_speech_started)
     dg_connection.on(LiveTranscriptionEvents.Transcript, on_transcript)
 
     options = LiveOptions(
