@@ -8,6 +8,7 @@ import asyncio
 import audioop
 import base64
 import json
+import time
 import traceback
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket
@@ -189,6 +190,9 @@ async def media_stream(websocket: WebSocket) -> None:
     tts_queue: asyncio.Queue[str | None] = asyncio.Queue()
     history: list[dict] = []
     is_speaking: bool = False
+    call_start: float = time.time()
+    student_id: str | None = None
+    tools_called: set[str] = set()
 
     async def _barge_in() -> None:
         nonlocal is_speaking
@@ -270,6 +274,7 @@ async def media_stream(websocket: WebSocket) -> None:
                             fn = tc.function.name
                             args = json.loads(tc.function.arguments)
                             print(f"[LLM] tool call: {fn}({args})")
+                            tools_called.add(fn)
                             if fn == "get_courses":
                                 result = await get_courses(supabase, **args)
                             elif fn == "create_booking":
@@ -376,6 +381,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 if caller_phone:
                     student = await get_student_by_phone(supabase, caller_phone)
                     if student:
+                        student_id = student["id"]
                         print(f"[DB] studente: {student['first_name']} {student['last_name']} ({student['level']})")
                         history.append({
                             "role": "system",
@@ -401,3 +407,41 @@ async def media_stream(websocket: WebSocket) -> None:
         await dg_task
         await llm_task
         await tts_task
+
+        def _derive_intent() -> str:
+            if "notify_secretary" in tools_called:
+                return "escalation"
+            if "create_booking" in tools_called:
+                return "prenotazione"
+            if "create_recovery" in tools_called:
+                return "recupero"
+            if "get_courses" in tools_called:
+                return "info_corsi"
+            return "unknown"
+
+        def _derive_outcome() -> str:
+            if "notify_secretary" in tools_called:
+                return "escalato alla segreteria"
+            if "create_booking" in tools_called:
+                return "prenotazione_confermata"
+            if "create_recovery" in tools_called:
+                return "recupero_confermato"
+            if "get_courses" in tools_called:
+                return "info_fornite"
+            return "unknown"
+
+        def _insert_log() -> None:
+            supabase.table("call_logs").insert({
+                "student_id": student_id,
+                "phone_from": caller_phone or "unknown",
+                "intent_detected": _derive_intent(),
+                "outcome": _derive_outcome(),
+                "escalated": "notify_secretary" in tools_called,
+                "duration_seconds": int(time.time() - call_start),
+            }).execute()
+
+        try:
+            await asyncio.to_thread(_insert_log)
+            print(f"[log] chiamata registrata — intent={_derive_intent()} duration={int(time.time() - call_start)}s")
+        except Exception as exc:
+            print(f"[log] errore insert: {exc}")
