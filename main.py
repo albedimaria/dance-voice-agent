@@ -426,9 +426,12 @@ async def media_stream(websocket: WebSocket) -> None:
             print(f"[LLM] input: {text}")
             history.append({"role": "user", "content": text})
             try:
-                # keep last 20 messages (10 turns) to limit token usage
-                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history[-20:]
-                for _ in range(10):
+                # system messages (student identity, trial context) are always kept;
+                # only user/assistant turns are trimmed to the last 20
+                system_msgs = [m for m in history if m["role"] == "system"]
+                turn_msgs = [m for m in history if m["role"] != "system"]
+                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + system_msgs + turn_msgs[-20:]
+                for _ in range(10):  # else-branch fires if loop exhausts without break
                     tool_calls_acc: dict[int, dict] = {}
                     text_acc = ""
                     sentence_buf = ""
@@ -503,6 +506,11 @@ async def media_stream(websocket: WebSocket) -> None:
                         history.append({"role": "assistant", "content": text_acc})
                         print(f"[LLM] risposta: {text_acc}")
                         break
+                else:
+                    fallback = "Mi dispiace, ho avuto un problema tecnico. Riprova o contatta la segreteria."
+                    await tts_queue.put(fallback)
+                    history.append({"role": "assistant", "content": fallback})
+                    print("[LLM] limite iterazioni raggiunto — fallback inviato")
 
             except Exception:
                 print(f"[LLM] errore:\n{traceback.format_exc()}")
@@ -591,7 +599,8 @@ async def media_stream(websocket: WebSocket) -> None:
                             "content": (
                                 f"Stai parlando con {student['first_name']} {student['last_name']}, "
                                 f"livello {student['level']}. "
-                                f"Abbonamento attivo: {'sì' if student['active_subscription'] else 'no'}."
+                                f"Abbonamento attivo: {'sì' if student['active_subscription'] else 'no'}. "
+                                f"student_id: {student['id']}."
                             ),
                         })
                     else:

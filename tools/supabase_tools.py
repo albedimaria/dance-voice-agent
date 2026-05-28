@@ -78,18 +78,26 @@ async def create_booking(
                 )
             }
 
-        insert_result = (
-            supabase.table("bookings")
-            .insert({
-                "student_id": student_id,
-                "course_id": course_id,
-                "date": date,
-                "type": "regular",
-                "status": "confirmed",
-            })
-            .execute()
-        )
-        return insert_result.data[0] if insert_result.data else {"error": "Inserimento fallito."}
+        try:
+            insert_result = (
+                supabase.table("bookings")
+                .insert({
+                    "student_id": student_id,
+                    "course_id": course_id,
+                    "date": date,
+                    "type": "regular",
+                    "status": "confirmed",
+                })
+                .execute()
+            )
+            return insert_result.data[0] if insert_result.data else {"error": "Inserimento fallito."}
+        except Exception as exc:
+            msg = str(exc)
+            if "capacity_exceeded" in msg:
+                return {"error": f"Il corso '{course['name']}' è al completo per il {date}."}
+            if "bookings_no_duplicate_confirmed" in msg:
+                return {"error": "Hai già una prenotazione per questo corso in questa data."}
+            return {"error": msg}
 
     return await asyncio.to_thread(_query)
 
@@ -242,17 +250,25 @@ async def create_recovery(
                 )
             }
 
-        insert_result = (
-            supabase.table("bookings")
-            .insert({
-                "student_id": student_id,
-                "course_id": course_id,
-                "date": date,
-                "type": "recovery",
-                "status": "confirmed",
-            })
-            .execute()
-        )
-        return insert_result.data[0] if insert_result.data else {"error": "Inserimento fallito."}
+        try:
+            insert_result = (
+                supabase.table("bookings")
+                .insert({
+                    "student_id": student_id,
+                    "course_id": course_id,
+                    "date": date,
+                    "type": "recovery",
+                    "status": "confirmed",
+                })
+                .execute()
+            )
+            return insert_result.data[0] if insert_result.data else {"error": "Inserimento fallito."}
+        except Exception as exc:
+            msg = str(exc)
+            if "capacity_exceeded" in msg:
+                return {"error": f"Il corso '{course['name']}' è al completo per il {date}."}
+            if "bookings_no_duplicate_confirmed" in msg:
+                return {"error": "Hai già un recupero per questo corso in questa data."}
+            return {"error": msg}
 
     return await asyncio.to_thread(_query)
