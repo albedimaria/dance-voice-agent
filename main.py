@@ -7,6 +7,7 @@ import os
 import asyncio
 import audioop
 import base64
+from contextlib import asynccontextmanager
 import json
 import re
 import time
@@ -25,12 +26,35 @@ from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 from prompt import SYSTEM_PROMPT
 from tools.supabase_tools import get_student_by_phone, get_courses, create_booking, create_recovery, notify_secretary, get_settings, check_trial_used, create_trial_session, get_pricing
 
-app = FastAPI(title="dance-voice-agent")
-
 supabase: Client = create_client(
     os.environ["SUPABASE_URL"],
     os.environ["SUPABASE_SERVICE_ROLE_KEY"],
 )
+
+
+async def _keepalive_loop() -> None:
+    INTERVAL = 5 * 24 * 3600  # 5 giorni, sotto la soglia di 7 di Supabase
+    while True:
+        await asyncio.sleep(INTERVAL)
+        try:
+            supabase.table("settings").select("key").limit(1).execute()
+            print("[keepalive] Supabase ping ok")
+        except Exception as exc:
+            print(f"[keepalive] errore: {exc}")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    task = asyncio.create_task(_keepalive_loop())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title="dance-voice-agent", lifespan=lifespan)
 
 twilio = TwilioClient(
     os.environ["TWILIO_ACCOUNT_SID"],
