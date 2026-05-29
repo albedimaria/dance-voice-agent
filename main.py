@@ -10,6 +10,7 @@ import base64
 from contextlib import asynccontextmanager
 import json
 import re
+import secrets
 import time
 import traceback
 
@@ -65,6 +66,10 @@ tw_validator = RequestValidator(os.environ["TWILIO_AUTH_TOKEN"])
 deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
 
 openai = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+# One-time tokens issued by /incoming-call and consumed by /media-stream.
+# Maps token → expiry timestamp (unix). TTL: 30 seconds.
+pending_tokens: dict[str, float] = {}
 
 
 OPENAI_TOOLS = [
@@ -283,7 +288,9 @@ async def incoming_call(request: Request) -> Response:
         raise HTTPException(status_code=403, detail="Invalid Twilio signature")
 
     host = request.headers.get("host", request.base_url.hostname)
-    stream_url = f"wss://{host}/media-stream"
+    token = secrets.token_urlsafe(32)
+    pending_tokens[token] = time.time() + 30  # 30s TTL
+    stream_url = f"wss://{host}/media-stream?token={token}"
 
     response = VoiceResponse()
     connect = Connect()
@@ -297,6 +304,17 @@ async def incoming_call(request: Request) -> Response:
 
 @app.websocket("/media-stream")
 async def media_stream(websocket: WebSocket) -> None:
+    token = websocket.query_params.get("token", "")
+    expiry = pending_tokens.pop(token, 0.0)
+    # Clean up any other expired tokens opportunistically
+    now = time.time()
+    for t in [t for t, exp in list(pending_tokens.items()) if exp < now]:
+        pending_tokens.pop(t, None)
+    if not token or expiry < now:
+        await websocket.accept()
+        await websocket.close(code=1008)
+        print("[stream] WebSocket rifiutato — token mancante o scaduto")
+        return
     await websocket.accept()
     print("[stream] WebSocket accettato")
 

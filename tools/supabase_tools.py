@@ -1,8 +1,24 @@
 import asyncio
+from datetime import date as date_type, datetime
 import os
 
 from supabase import Client
+from twilio.base.exceptions import TwilioRestException
 from twilio.rest import Client as TwilioClient
+
+
+def _validate_date(date_str: str) -> str | None:
+    """Ritorna un messaggio di errore se la data non è valida, None se ok."""
+    try:
+        d = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return f"Data non valida: '{date_str}'. Usa il formato YYYY-MM-DD (es. 2026-06-15)."
+    today = date_type.today()
+    if d < today:
+        return f"Non puoi prenotare per una data già passata ({date_str})."
+    if (d - today).days > 180:
+        return "Non puoi prenotare con più di 6 mesi di anticipo."
+    return None
 
 
 async def get_student_by_phone(supabase: Client, phone: str) -> dict | None:
@@ -49,6 +65,10 @@ async def create_booking(
     course_id: str,
     date: str,
 ) -> dict:
+    err = _validate_date(date)
+    if err:
+        return {"error": err}
+
     def _query():
         course_result = (
             supabase.table("courses")
@@ -104,12 +124,31 @@ async def create_booking(
 
 async def notify_secretary(message: str, caller_phone: str, twilio_client: TwilioClient) -> dict:
     def _send():
-        twilio_client.messages.create(
-            from_=os.environ["TWILIO_WHATSAPP_FROM"],
-            to=os.environ["SECRETARY_WHATSAPP"],
-            body=f"Chiamata da {caller_phone}:\n{message}",
-        )
-        return {"sent": True}
+        try:
+            twilio_client.messages.create(
+                from_=os.environ["TWILIO_WHATSAPP_FROM"],
+                to=os.environ["SECRETARY_WHATSAPP"],
+                body=f"Chiamata da {caller_phone}:\n{message}",
+            )
+            return {"sent": True}
+        except TwilioRestException as exc:
+            print(f"[notify_secretary] Twilio error {exc.status}: {exc.msg}")
+            return {
+                "sent": False,
+                "error": (
+                    f"Non sono riuscita ad avvisare la segreteria automaticamente. "
+                    f"Puoi contattarla direttamente su WhatsApp al 351 000 0000."
+                ),
+            }
+        except Exception as exc:
+            print(f"[notify_secretary] errore generico: {exc}")
+            return {
+                "sent": False,
+                "error": (
+                    "Non sono riuscita ad avvisare la segreteria automaticamente. "
+                    "Puoi contattarla direttamente su WhatsApp al 351 000 0000."
+                ),
+            }
 
     return await asyncio.to_thread(_send)
 
@@ -149,6 +188,10 @@ async def create_trial_session(
     course_id: str,
     date: str,
 ) -> dict:
+    err = _validate_date(date)
+    if err:
+        return {"error": err}
+
     def _query():
         try:
             result = (
@@ -192,6 +235,10 @@ async def create_recovery(
     course_id: str,
     date: str,
 ) -> dict:
+    err = _validate_date(date)
+    if err:
+        return {"error": err}
+
     def _query():
         student_result = (
             supabase.table("students")
