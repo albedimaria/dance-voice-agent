@@ -6,3 +6,4 @@ supabase==2.10.0
 twilio==9.3.6
 deepgram-sdk==3.7.7
 openai==1.57.0
+elevenlabs==1.54.0

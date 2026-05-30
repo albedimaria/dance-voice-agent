@@ -24,6 +24,7 @@ from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 from openai import AsyncOpenAI
 
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
+from elevenlabs import ElevenLabs
 from prompt import SYSTEM_PROMPT
 from tools.supabase_tools import get_student_by_phone, get_courses, create_booking, create_recovery, notify_secretary, get_settings, check_trial_used, create_trial_session, get_pricing
 
@@ -66,6 +67,7 @@ tw_validator = RequestValidator(os.environ["TWILIO_AUTH_TOKEN"])
 deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
 
 openai = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+eleven = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
 
 # One-time tokens issued by /incoming-call and consumed by /media-stream.
 # Maps token → expiry timestamp (unix). TTL: 30 seconds.
@@ -320,6 +322,7 @@ async def media_stream(websocket: WebSocket) -> None:
 
     stream_sid: str = ""
     caller_phone: str = ""
+    tts_language: str = "it"  # updated from student.language_preference on call start
     dg_connection = deepgram.listen.asynclive.v("1")
     audio_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
     llm_queue: asyncio.Queue[str | None] = asyncio.Queue()
@@ -539,6 +542,7 @@ async def media_stream(websocket: WebSocket) -> None:
     async def tts_sender() -> None:
         nonlocal is_speaking
         FRAME = 160  # 20ms @ mulaw 8kHz
+        loop = asyncio.get_running_loop()
 
         async def _send_frame(data: bytes) -> None:
             await websocket.send_text(json.dumps({
@@ -551,23 +555,43 @@ async def media_stream(websocket: WebSocket) -> None:
             text = await tts_queue.get()
             if text is None:
                 break
-            print(f"[TTS] sintetizzando: {text}")
+            print(f"[TTS] sintetizzando: {text} (lang={tts_language})")
             try:
                 buf = b""
                 ratecv_state = None
                 is_speaking = True
-                async with openai.audio.speech.with_streaming_response.create(
-                    model="tts-1",
-                    voice="nova",
-                    input=text,
-                    response_format="pcm",
-                    timeout=10.0,
-                ) as response:
-                    async for pcm_chunk in response.iter_bytes(chunk_size=4096):
+
+                # Bridge: run sync ElevenLabs generator in a thread and feed
+                # PCM chunks into an async queue for the event loop to consume.
+                chunk_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+
+                def _generate_sync() -> None:
+                    try:
+                        for chunk in eleven.text_to_speech.convert_as_stream(
+                            voice_id=os.environ["ELEVENLABS_VOICE_ID"],
+                            text=text,
+                            model_id="eleven_turbo_v2_5",
+                            output_format="pcm_24000",
+                            language_code=tts_language,
+                        ):
+                            if chunk:
+                                asyncio.run_coroutine_threadsafe(
+                                    chunk_queue.put(chunk), loop
+                                ).result()
+                    finally:
+                        asyncio.run_coroutine_threadsafe(
+                            chunk_queue.put(None), loop
+                        ).result()
+
+                generate_future = loop.run_in_executor(None, _generate_sync)
+
+                try:
+                    while True:
+                        pcm_chunk = await asyncio.wait_for(chunk_queue.get(), timeout=15.0)
+                        if pcm_chunk is None:
+                            break
                         if not is_speaking:
                             break
-                        if not pcm_chunk:
-                            continue
                         resampled, ratecv_state = audioop.ratecv(
                             pcm_chunk, 2, 1, 24000, 8000, ratecv_state
                         )
@@ -578,8 +602,11 @@ async def media_stream(websocket: WebSocket) -> None:
                                 break
                             await _send_frame(buf[:FRAME])
                             buf = buf[FRAME:]
-                if is_speaking and buf:
-                    await _send_frame(buf)
+                    if is_speaking and buf:
+                        await _send_frame(buf)
+                finally:
+                    await generate_future  # attendi che il thread termini
+
             except Exception as exc:
                 print(f"[TTS] errore: {exc}")
             finally:
@@ -611,7 +638,8 @@ async def media_stream(websocket: WebSocket) -> None:
                     student = await get_student_by_phone(supabase, caller_phone)
                     if student:
                         student_id = student["id"]
-                        print(f"[DB] studente: {student['first_name']} {student['last_name']} ({student['level']})")
+                        tts_language = student.get("language_preference", "it")
+                        print(f"[DB] studente: {student['first_name']} {student['last_name']} ({student['level']}) lang={tts_language}")
                         history.append({
                             "role": "system",
                             "content": (
@@ -621,6 +649,11 @@ async def media_stream(websocket: WebSocket) -> None:
                                 f"student_id: {student['id']}."
                             ),
                         })
+                        if tts_language == "es":
+                            history.append({
+                                "role": "system",
+                                "content": "Este estudiante prefiere hablar en español. Responde siempre en español.",
+                            })
                     else:
                         print(f"[DB] numero non trovato: {caller_phone}")
                 settings = await get_settings(supabase)
