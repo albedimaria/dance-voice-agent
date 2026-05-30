@@ -8,6 +8,8 @@ import asyncio
 import audioop
 import base64
 from contextlib import asynccontextmanager
+import hashlib
+import hmac
 import json
 import re
 import secrets
@@ -69,9 +71,29 @@ deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
 openai = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
 eleven = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
 
-# One-time tokens issued by /incoming-call and consumed by /media-stream.
-# Maps token → expiry timestamp (unix). TTL: 30 seconds.
-pending_tokens: dict[str, float] = {}
+# Stateless HMAC tokens for WebSocket auth — works with multiple workers.
+# WS_TOKEN_SECRET must be the same across all instances (set it in env).
+_WS_SECRET: str = os.environ.get("WS_TOKEN_SECRET", "")
+
+
+def _make_ws_token() -> str:
+    ts = str(int(time.time()))
+    nonce = secrets.token_hex(8)
+    sig = hmac.new(_WS_SECRET.encode(), f"{ts}:{nonce}".encode(), hashlib.sha256).hexdigest()
+    return f"{ts}.{nonce}.{sig}"
+
+
+def _verify_ws_token(token: str, ttl: int = 30) -> bool:
+    try:
+        ts_s, nonce, sig = token.split(".", 2)
+        if abs(int(time.time()) - int(ts_s)) > ttl:
+            return False
+        expected = hmac.new(
+            _WS_SECRET.encode(), f"{ts_s}:{nonce}".encode(), hashlib.sha256
+        ).hexdigest()
+        return hmac.compare_digest(sig, expected)
+    except Exception:
+        return False
 
 
 OPENAI_TOOLS = [
@@ -290,8 +312,7 @@ async def incoming_call(request: Request) -> Response:
         raise HTTPException(status_code=403, detail="Invalid Twilio signature")
 
     host = request.headers.get("host", request.base_url.hostname)
-    token = secrets.token_urlsafe(32)
-    pending_tokens[token] = time.time() + 30  # 30s TTL
+    token = _make_ws_token()
     stream_url = f"wss://{host}/media-stream?token={token}"
 
     response = VoiceResponse()
@@ -307,12 +328,7 @@ async def incoming_call(request: Request) -> Response:
 @app.websocket("/media-stream")
 async def media_stream(websocket: WebSocket) -> None:
     token = websocket.query_params.get("token", "")
-    expiry = pending_tokens.pop(token, 0.0)
-    # Clean up any other expired tokens opportunistically
-    now = time.time()
-    for t in [t for t, exp in list(pending_tokens.items()) if exp < now]:
-        pending_tokens.pop(t, None)
-    if not token or expiry < now:
+    if not _verify_ws_token(token):
         await websocket.accept()
         await websocket.close(code=1008)
         print("[stream] WebSocket rifiutato — token mancante o scaduto")
