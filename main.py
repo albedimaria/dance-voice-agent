@@ -313,12 +313,13 @@ async def incoming_call(request: Request) -> Response:
 
     host = request.headers.get("host", request.base_url.hostname)
     token = _make_ws_token()
-    stream_url = f"wss://{host}/media-stream?token={token}"
+    stream_url = f"wss://{host}/media-stream"  # Twilio ignora query params sugli Stream
 
     response = VoiceResponse()
     connect = Connect()
     stream = Stream(url=stream_url)
     stream.parameter(name="from", value=form.get("From", ""))
+    stream.parameter(name="token", value=token)  # arriva in start.customParameters
     connect.append(stream)
     response.append(connect)
 
@@ -327,14 +328,8 @@ async def incoming_call(request: Request) -> Response:
 
 @app.websocket("/media-stream")
 async def media_stream(websocket: WebSocket) -> None:
-    token = websocket.query_params.get("token", "")
-    if not _verify_ws_token(token):
-        await websocket.accept()
-        await websocket.close(code=1008)
-        print("[stream] WebSocket rifiutato — token mancante o scaduto")
-        return
     await websocket.accept()
-    print("[stream] WebSocket accettato")
+    print("[stream] WebSocket accettato — in attesa di start con token")
 
     stream_sid: str = ""
     caller_phone: str = ""
@@ -648,7 +643,13 @@ async def media_stream(websocket: WebSocket) -> None:
                 print("[twilio] connected")
             elif event == "start":
                 stream_sid = data["start"]["streamSid"]
-                caller_phone = data["start"].get("customParameters", {}).get("from", "")
+                custom_params = data["start"].get("customParameters", {})
+                caller_phone = custom_params.get("from", "")
+                ws_token = custom_params.get("token", "")
+                if not _verify_ws_token(ws_token):
+                    print("[stream] token non valido nel start message — chiudo")
+                    await websocket.close(code=1008)
+                    break
                 print(f"[stream] avviato — callSid={data['start'].get('callSid')} from={caller_phone}")
                 if caller_phone:
                     student = await get_student_by_phone(supabase, caller_phone)
