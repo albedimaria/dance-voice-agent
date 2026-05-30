@@ -108,10 +108,14 @@ OPENAI_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "style": {
+                        "type": "string",
+                        "description": "Filtra per stile o nome corso (ricerca parziale, es. 'baciata', 'salsa', 'sensual'). Usa quando l'utente chiede di uno stile specifico.",
+                    },
                     "level": {
                         "type": "string",
                         "enum": ["base", "intermedio", "avanzato"],
-                        "description": "Filtra per livello del corso.",
+                        "description": "Filtra per livello. Usa SOLO se l'utente lo chiede esplicitamente — mai come filtro automatico.",
                     },
                     "location": {
                         "type": "string",

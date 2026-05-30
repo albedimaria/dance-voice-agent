@@ -37,6 +37,7 @@ async def get_student_by_phone(supabase: Client, phone: str) -> dict | None:
 
 async def get_courses(
     supabase: Client,
+    style: str | None = None,
     level: str | None = None,
     location: str | None = None,
     instructor: str | None = None,
@@ -47,6 +48,9 @@ async def get_courses(
             .select("id, name, style, level, instructor, day_of_week, time_start, duration_minutes, max_capacity, location")
             .eq("active", True)
         )
+        if style:
+            # cerca in entrambe le colonne style e name
+            q = q.or_(f"style.ilike.%{style}%,name.ilike.%{style}%")
         if level:
             q = q.eq("level", level)
         if location:
