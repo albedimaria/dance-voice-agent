@@ -585,7 +585,7 @@ async def media_stream(websocket: WebSocket) -> None:
                         for chunk in eleven.text_to_speech.convert_as_stream(
                             voice_id=os.environ["ELEVENLABS_VOICE_ID"],
                             text=text,
-                            model_id="eleven_turbo_v2_5",
+                            model_id="eleven_v3",
                             output_format="pcm_24000",
                             language_code=tts_language,
                         ):
