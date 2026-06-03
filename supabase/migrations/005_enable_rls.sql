@@ -56,3 +56,25 @@ CREATE POLICY "authenticated_update_settings"
     TO authenticated
     USING (true)
     WITH CHECK (true);
+
+-- ─── courses ─────────────────────────────────────────────────────────────────
+-- Non-sensitive but must have RLS enabled to satisfy Supabase security checks.
+-- Voice agent reads via service_role (bypasses RLS); dashboard reads as authenticated.
+
+ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "authenticated_select_courses"
+    ON courses
+    FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- ─── trial_sessions ──────────────────────────────────────────────────────────
+
+ALTER TABLE trial_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "authenticated_select_trial_sessions"
+    ON trial_sessions
+    FOR SELECT
+    TO authenticated
+    USING (true);
