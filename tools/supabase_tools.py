@@ -35,6 +35,34 @@ async def get_student_by_phone(supabase: Client, phone: str) -> dict | None:
     return await asyncio.to_thread(_query)
 
 
+# Mappa grafie fonetiche → nomi standard nei DB.
+# L'STT può trascrivere "bachata" come "baciata"/"facciata" ecc.;
+# il system prompt usa le grafie fonetiche per il TTS ma get_courses
+# deve cercare i nomi reali nel database.
+_STYLE_ALIASES: dict[str, str] = {
+    "baciata": "bachata",
+    "bachiata": "bachata",
+    "facciata": "bachata",
+    "faciata": "bachata",
+    "bacciata": "bachata",
+    "merenghe": "merengue",
+    "merenghè": "merengue",
+    "merengè": "merengue",
+    "regghetòn": "reggaeton",
+    "regghetón": "reggaeton",
+    "reggheton": "reggaeton",
+    "reggeton": "reggaeton",
+}
+
+
+def _normalize_style(raw: str) -> str:
+    """Sostituisce grafie fonetiche con i nomi standard per la ricerca in DB."""
+    s = raw.lower().strip()
+    for alias, canonical in _STYLE_ALIASES.items():
+        s = s.replace(alias, canonical)
+    return s
+
+
 async def get_courses(
     supabase: Client,
     style: str | None = None,
@@ -49,8 +77,9 @@ async def get_courses(
             .eq("active", True)
         )
         if style:
+            normalized = _normalize_style(style)
             # cerca in entrambe le colonne style e name
-            q = q.or_(f"style.ilike.%{style}%,name.ilike.%{style}%")
+            q = q.or_(f"style.ilike.%{normalized}%,name.ilike.%{normalized}%")
         if level:
             q = q.eq("level", level)
         if location:
