@@ -684,9 +684,9 @@ async def media_stream(websocket: WebSocket) -> None:
                         "content": "CONTESTO: Settimana di prova attiva. Tutti i corsi sono gratuiti e aperti.",
                     })
                     print("[settings] settimana di prova attiva")
-                await tts_queue.put(
-                    "Ciao! Sono TropicoCHETA, l'assistente di Ritmo Caliente. Come posso aiutarti?"
-                )
+                greeting = "Ciao! Sono TropicoCHETA, l'assistente di Ritmo Caliente. Come posso aiutarti?"
+                await tts_queue.put(greeting)
+                history.append({"role": "assistant", "content": greeting})
             elif event == "stop":
                 print("[stream] terminato")
                 break
