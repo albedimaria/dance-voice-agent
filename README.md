@@ -18,8 +18,8 @@ Twilio (inbound)
 FastAPI WebSocket handler
     ├──► Deepgram Nova-2 (streaming STT)
     │        │
-    │        ├── SpeechStarted event ──► barge-in: clear Twilio buffer + interrupt TTS
-    │        └── is_final transcript ──► LLM queue
+    │        ├── interim transcript (non-empty) ──► barge-in: clear Twilio buffer + interrupt TTS
+    │        └── is_final transcript           ──► LLM queue
     │
     ├──► GPT-4o (agentic loop)
     │        │  tool calls
@@ -56,10 +56,12 @@ The custom pipeline runs each component independently. Swapping any layer — ST
 ## Key Technical Decisions
 
 **Deepgram for STT**
-Deepgram Nova-2 is the only STT provider with a native streaming WebSocket API designed for telephony (mulaw, 8kHz, 8-bit). The `SpeechStarted` VAD event — fired before any transcript is produced — is the mechanism used for barge-in. Alternatives (Whisper, Google Speech) are batch or introduce higher latency; partial transcripts alone would add 300–500ms to barge-in response time.
+Deepgram Nova-2 has a native streaming WebSocket API designed for telephony (mulaw, 8kHz, 8-bit) with `interim_results` enabled. Alternatives (Whisper, Google Speech) are batch-oriented or introduce higher latency. Streaming interim transcripts are what make sub-second barge-in possible.
 
-**Barge-in via SpeechStarted**
-When `SpeechStarted` fires while the agent is speaking (`is_speaking = True`): the TTS stream is abandoned mid-chunk, the `tts_queue` is drained, and a `{"event": "clear"}` message is sent to Twilio to flush the audio buffer on the caller's end. The `is_speaking` flag is checked at every 160-byte frame boundary in `tts_sender` so interruption is near-immediate (~20ms). A 0.8s cooldown after barge-in prevents the start of the caller's own voice from being mis-interpreted as another interruption.
+**Barge-in via the first interim transcript**
+Deepgram is subscribed to both `SpeechStarted` (VAD) and `Transcript` events, but barge-in is driven by the first **non-empty interim transcript** while the agent is speaking — not by the raw VAD event. This is a deliberate robustness tradeoff: VAD fires on any sound (coughs, background noise, line hiss) and would cause false interruptions on a noisy phone line, whereas requiring an actual interim transcript means real speech was recognised. The cost is a small added latency (the time Deepgram needs to emit the first interim token) in exchange for far fewer false barge-ins.
+
+When that interim transcript arrives with `is_speaking = True`: the TTS stream is abandoned mid-chunk, the `tts_queue` is drained, and a `{"event": "clear"}` message is sent to Twilio to flush the audio buffer on the caller's end. The `is_speaking` flag is checked at every 160-byte frame boundary in `tts_sender`, so once triggered the interruption is near-immediate (~20ms). A 0.8s cooldown after a barge-in prevents the tail of the agent's own audio, or the caller's continuing speech, from being mis-interpreted as a second interruption.
 
 **Audio conversion in stdlib**
 ElevenLabs TTS outputs PCM s16le at 24kHz. Twilio expects mulaw at 8kHz. The conversion uses `audioop.ratecv` (resample, preserving state across streaming chunks) and `audioop.lin2ulaw` — both in Python's standard library, no additional dependencies. Output is buffered and flushed in exact 160-byte frames to maintain mulaw frame alignment on the Twilio side.
@@ -218,7 +220,7 @@ Currently used: `trial_week_active` (`"true"` / `"false"`).
        └── Checks trial_week_active → injects trial context if needed
    └── Enqueues greeting to tts_queue → ElevenLabs → Twilio audio out
 6. Twilio streams mulaw audio frames → audio_queue → Deepgram
-   ├── Deepgram "SpeechStarted" event: if is_speaking → barge-in
+   ├── Deepgram interim transcript (non-empty): if is_speaking → barge-in
    │   └── drains tts_queue, sends {"event":"clear"} to Twilio
    └── Deepgram "is_final" transcript → llm_queue
 7. llm_worker dequeues transcript
