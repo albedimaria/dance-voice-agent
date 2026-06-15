@@ -125,6 +125,10 @@ OPENAI_TOOLS = [
                         "type": "string",
                         "description": "Filtra per nome istruttore (ricerca parziale, es. 'Marco', 'Rossi').",
                     },
+                    "day": {
+                        "type": "string",
+                        "description": "Filtra per giorno della settimana. Accetta nomi italiani interi o abbreviati: 'lunedì'/'lun', 'martedì'/'mar', 'mercoledì'/'mer', 'giovedì'/'gio', 'venerdì'/'ven', 'sabato'/'sab', 'domenica'/'dom'. Usa quando il chiamante chiede cosa c'è in un giorno specifico.",
+                    },
                 },
                 "required": [],
             },

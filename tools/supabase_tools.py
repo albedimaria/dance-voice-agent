@@ -1,10 +1,31 @@
 import asyncio
 from datetime import date as date_type, datetime
 import os
+import time
 
 from supabase import Client
 from twilio.base.exceptions import TwilioRestException
 from twilio.rest import Client as TwilioClient
+
+
+_DAY_NAMES_IT: list[str] = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
+_DAY_ALIASES: dict[str, int] = {
+    "lun": 0, "lunedì": 0, "lunedi": 0,
+    "mar": 1, "martedì": 1, "martedi": 1,
+    "mer": 2, "mercoledì": 2, "mercoledi": 2,
+    "gio": 3, "giovedì": 3, "giovedi": 3,
+    "ven": 4, "venerdì": 4, "venerdi": 4,
+    "sab": 5, "sabato": 5,
+    "dom": 6, "domenica": 6,
+}
+
+# Corsi cambiano raramente: cache con TTL di 5 minuti per ridurre latenza
+_courses_cache: dict[str, tuple[list[dict], float]] = {}
+_COURSES_CACHE_TTL: float = 300.0
+
+
+def _courses_cache_key(style: str | None, level: str | None, location: str | None, instructor: str | None, day_num: int | None) -> str:
+    return f"{style or ''}|{level or ''}|{location or ''}|{instructor or ''}|{'' if day_num is None else day_num}"
 
 
 def _validate_date(date_str: str) -> str | None:
@@ -69,7 +90,24 @@ async def get_courses(
     level: str | None = None,
     location: str | None = None,
     instructor: str | None = None,
+    day: str | None = None,
 ) -> list[dict]:
+    # Risolvi il giorno in intero se specificato
+    day_num: int | None = None
+    if day is not None:
+        raw = day.strip().lower()
+        if raw.isdigit():
+            day_num = int(raw)
+        else:
+            day_num = _DAY_ALIASES.get(raw)
+
+    cache_key = _courses_cache_key(style, level, location, instructor, day_num)
+    now = time.monotonic()
+    if cache_key in _courses_cache:
+        cached, cached_at = _courses_cache[cache_key]
+        if now - cached_at < _COURSES_CACHE_TTL:
+            return cached
+
     def _query():
         q = (
             supabase.table("courses")
@@ -86,10 +124,18 @@ async def get_courses(
             q = q.ilike("location", f"%{location}%")
         if instructor:
             q = q.ilike("instructor", f"%{instructor}%")
+        if day_num is not None:
+            q = q.eq("day_of_week", day_num)
         result = q.order("day_of_week").order("time_start").execute()
-        return result.data or []
+        rows = result.data or []
+        for row in rows:
+            dow = row.get("day_of_week")
+            row["day_name"] = _DAY_NAMES_IT[dow] if dow is not None and 0 <= dow <= 6 else "?"
+        return rows
 
-    return await asyncio.to_thread(_query)
+    result = await asyncio.to_thread(_query)
+    _courses_cache[cache_key] = (result, now)
+    return result
 
 
 async def create_booking(
