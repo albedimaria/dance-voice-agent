@@ -1,0 +1,53 @@
+# Render Blueprint — infrastructure-as-code for the dance-voice-agent web service.
+#
+# This file documents and versions the production deploy configuration. Note: an
+# existing service created manually in the dashboard is NOT retroactively managed
+# by this file — Render only applies a Blueprint to services it created from one,
+# or when you explicitly connect the repo as a Blueprint. Use it to recreate the
+# service reproducibly, or as the source of truth for the current config.
+#
+# Python version: intentionally NOT pinned here. The app runs on any Python >= 3.11;
+# on Render's current default image (3.13+), the `audioop-lts` backport declared in
+# requirements.txt restores the stdlib `audioop` module removed in 3.13 (PEP 594).
+
+services:
+  - type: web
+    name: dance-voice-agent
+    runtime: python
+    plan: free
+    region: frankfurt # match Supabase eu-west for lower DB latency
+    branch: main
+    autoDeploy: true # push to main → build + deploy
+    buildCommand: pip install -r requirements.txt
+    # Twilio requires TLS on both the webhook and the WebSocket; Render provides it.
+    # Bind to $PORT (Render injects it) so the port scan succeeds.
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # All values are secrets — set them in the Render dashboard, never commit them.
+      # sync: false tells Render not to expect a value in this file.
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: SECRETARY_WHATSAPP
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Must be identical across all instances for stateless HMAC WebSocket tokens.
+      - key: WS_TOKEN_SECRET
+        sync: false

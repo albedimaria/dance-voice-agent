@@ -264,7 +264,7 @@ Currently used: `trial_week_active` (`"true"` / `"false"`).
 
 ## Local Setup
 
-**Prerequisites**: Python 3.11.x (pinned — Deepgram SDK incompatible with 3.13+)
+**Prerequisites**: Python 3.11+ (see the note on `audioop` under Stack for the 3.13+ caveat)
 
 ```bash
 python -m venv .venv
@@ -302,7 +302,7 @@ The Supabase keepalive loop (pings the DB every 5 days) prevents the connection 
 
 | Component | Library | Version |
 |-----------|---------|---------|
-| Runtime | Python | 3.11.9 |
+| Runtime | Python | 3.11+ (3.13+ needs `audioop-lts`) |
 | Web framework | FastAPI | 0.115.5 |
 | ASGI server | Uvicorn | 0.32.1 |
 | Telephony | twilio | 9.3.6 |
@@ -311,7 +311,11 @@ The Supabase keepalive loop (pings the DB every 5 days) prevents the connection 
 | TTS | elevenlabs (eleven_v3) | 1.54.0 |
 | Database | supabase | 2.10.0 |
 
-Python 3.11.9 is pinned because the Deepgram SDK is incompatible with Python 3.13+.
+**Python version note.** `.python-version` pins 3.11.9 for local development, but the app runs
+on any Python ≥3.11. The one caveat is `audioop` (used for the TTS resample/μ-law conversion in
+`main.py`): it was removed from the standard library in Python 3.13 (PEP 594). On 3.13+ the
+`audioop-lts` backport — declared in `requirements.txt` with an environment marker — restores it,
+so the build works on newer runtimes (e.g. Render's current default image) with no code change.
 
 ---
 
