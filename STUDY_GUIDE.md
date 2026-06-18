@@ -361,12 +361,13 @@ Meglio che li dica tu con consapevolezza. Sono già nel README ("What would need
   scheduler dedicato.
 - **Error recovery basico**: un tool che fallisce logga e restituisce un messaggio, ma niente
   retry/circuit-breaker. → *Aggiungerei retry con backoff sui tool idempotenti.*
-- **Niente test automatici**: la pipeline si prova con chiamate live. → *Scriverei test sul
-  layer tool (mock Supabase) e un test di integrazione sul parsing degli eventi Twilio.*
-- **Osservabilità: prima base, non completa.** Ora la latenza per-turno è loggata e le medie
-  per-chiamata persistite in `call_logs` + mostrate nella dashboard (TTFT, response, contain rate,
-  completion rate). → *Mancano ancora: tracing distribuito, percentili (p95/p99) invece della sola
-  media, e alerting su soglie. Li aggiungerei con OpenTelemetry + un grafico p95 sulla dashboard.*
+- **Test: c'è una eval suite riproducibile, non unit test.** `evals/run_evals.py` esegue scenari
+  fissi sul vero prompt+tool+modello e misura task-success (100% su 6 scenari, p50 4.2s/p95 6.3s),
+  con trend tra run in dashboard. → *Mancano ancora unit test sul layer tool (mock Supabase) e un
+  test di integrazione sul parsing degli eventi Twilio / pipeline audio.*
+- **Osservabilità: buona, non completa.** Latenza per-turno persistita in `turn_metrics`, rollup +
+  costo in `call_traces`, viste `/observability` (per-stage, p50/p95, costo, barge-in) e `/evals`.
+  → *Mancano ancora: tracing distribuito e alerting su soglie. Li aggiungerei con OpenTelemetry.*
 - **Niente admin UI per la config nel backend**: orari e settings si toccano in Supabase (la
   dashboard Next.js separata copre la parte analytics/monitoring, non l'editing dei corsi).
 - **Cold start su Render free** (vedi §11): la prima chiamata dopo inattività può cadere.

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "info_bachata",
+    "name": "Info corsi bachata",
+    "user": "Ciao, che corsi di bachata avete?",
+    "expect_tool": "get_courses"
+  },
+  {
+    "id": "info_instructor",
+    "name": "Corsi di un istruttore",
+    "user": "Avete corsi tenuti da Guille?",
+    "expect_tool": "get_courses"
+  },
+  {
+    "id": "pricing_due_corsi",
+    "name": "Prezzo abbonamento due corsi",
+    "user": "Quanto costa iscriversi a due corsi?",
+    "expect_tool": "get_pricing"
+  },
+  {
+    "id": "prenotazione",
+    "name": "Prenotazione lezione (multi-turno)",
+    "system": "Stai parlando con Giulia Marino, livello base. Abbonamento attivo: sì. student_id: b1000000-0000-0000-0000-000000000001.",
+    "turns": [
+      "Vorrei prenotare la lezione di bachata sensual base con Guille, per il 23 giugno 2026.",
+      "Sì, è quella giusta, confermo la prenotazione."
+    ],
+    "expect_tool": "create_booking"
+  },
+  {
+    "id": "lezione_prova",
+    "name": "Lezione di prova",
+    "system": "Stai parlando con Luca Conti, livello intermedio. Abbonamento attivo: sì. student_id: b1000000-0000-0000-0000-000000000002.",
+    "user": "Posso fare una lezione di prova di bachata sensual intermedio con Guille?",
+    "expect_tool": "check_trial_used"
+  },
+  {
+    "id": "spagnolo",
+    "name": "Richiesta in spagnolo",
+    "system": "Este estudiante prefiere hablar en español. Responde siempre en español.",
+    "user": "Hola, ¿qué cursos de salsa tenéis disponibles?",
+    "expect_tool": "get_courses"
+  }
+]

@@ -28,6 +28,8 @@ from openai import AsyncOpenAI
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 from elevenlabs import ElevenLabs
 from prompt import SYSTEM_PROMPT
+from pricing import call_cost_usd
+from tools_schema import OPENAI_TOOLS
 from tools.supabase_tools import get_student_by_phone, get_courses, create_booking, create_recovery, notify_secretary, get_settings, check_trial_used, create_trial_session, get_pricing
 
 supabase: Client = create_client(
@@ -96,213 +98,7 @@ def _verify_ws_token(token: str, ttl: int = 30) -> bool:
         return False
 
 
-OPENAI_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_courses",
-            "description": (
-                "Recupera i corsi attivi di Ritmo Caliente. "
-                "Usa questo tool per verificare disponibilità prima di confermare prenotazioni o recuperi."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "style": {
-                        "type": "string",
-                        "description": "Filtra per stile o nome corso (ricerca parziale, es. 'baciata', 'salsa', 'sensual'). Usa quando l'utente chiede di uno stile specifico.",
-                    },
-                    "level": {
-                        "type": "string",
-                        "enum": ["base", "intermedio", "avanzato"],
-                        "description": "Filtra per livello. Usa SOLO se l'utente lo chiede esplicitamente — mai come filtro automatico.",
-                    },
-                    "location": {
-                        "type": "string",
-                        "description": "Filtra per sede (es. 'AIDA', 'TIGER').",
-                    },
-                    "instructor": {
-                        "type": "string",
-                        "description": "Filtra per nome istruttore (ricerca parziale, es. 'Marco', 'Rossi').",
-                    },
-                    "day": {
-                        "type": "string",
-                        "description": "Filtra per giorno della settimana. Accetta nomi italiani interi o abbreviati: 'lunedì'/'lun', 'martedì'/'mar', 'mercoledì'/'mer', 'giovedì'/'gio', 'venerdì'/'ven', 'sabato'/'sab', 'domenica'/'dom'. Usa quando il chiamante chiede cosa c'è in un giorno specifico.",
-                    },
-                },
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "create_booking",
-            "description": (
-                "Prenota una lezione regolare per uno studente. "
-                "Chiama SOLO dopo aver confermato corso e data con il chiamante. "
-                "Verifica prima la disponibilità con get_courses."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "student_id": {
-                        "type": "string",
-                        "description": "UUID dello studente (da get_student_by_phone).",
-                    },
-                    "course_id": {
-                        "type": "string",
-                        "description": "UUID del corso (da get_courses).",
-                    },
-                    "date": {
-                        "type": "string",
-                        "description": "Data della lezione in formato YYYY-MM-DD.",
-                    },
-                },
-                "required": ["student_id", "course_id", "date"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "create_recovery",
-            "description": (
-                "Prenota un recupero per uno studente in un corso di livello inferiore. "
-                "Il sistema verifica automaticamente la compatibilità di livello e la capienza. "
-                "Chiama SOLO dopo aver confermato corso e data con il chiamante."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "student_id": {
-                        "type": "string",
-                        "description": "UUID dello studente (da get_student_by_phone).",
-                    },
-                    "course_id": {
-                        "type": "string",
-                        "description": "UUID del corso target (da get_courses).",
-                    },
-                    "date": {
-                        "type": "string",
-                        "description": "Data del recupero in formato YYYY-MM-DD.",
-                    },
-                },
-                "required": ["student_id", "course_id", "date"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "notify_secretary",
-            "description": (
-                "Invia un messaggio WhatsApp alla segreteria di Ritmo Caliente. "
-                "Usa questo tool quando il chiamante ha un problema che non riesci a risolvere autonomamente "
-                "(es. reclami, richieste speciali, pagamenti, situazioni fuori dalla tua competenza)."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "message": {
-                        "type": "string",
-                        "description": "Descrizione chiara del problema o della richiesta del chiamante.",
-                    },
-                },
-                "required": ["message"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_settings",
-            "description": (
-                "Legge le impostazioni globali della scuola (es. 'trial_week_active'). "
-                "Usalo per verificare se la settimana di prova è attiva prima di proporre lezioni di prova."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "check_trial_used",
-            "description": (
-                "Verifica se uno studente ha già usato la lezione di prova per un corso specifico. "
-                "Restituisce true se la prova è già stata usata, false altrimenti."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "student_id": {
-                        "type": "string",
-                        "description": "UUID dello studente.",
-                    },
-                    "course_id": {
-                        "type": "string",
-                        "description": "UUID del corso.",
-                    },
-                },
-                "required": ["student_id", "course_id"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "create_trial_session",
-            "description": (
-                "Registra una lezione di prova per uno studente in un corso. "
-                "Chiama solo se trial_week_active è true e check_trial_used ha restituito false. "
-                "Ogni studente può fare al massimo una prova per corso."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "student_id": {
-                        "type": "string",
-                        "description": "UUID dello studente.",
-                    },
-                    "course_id": {
-                        "type": "string",
-                        "description": "UUID del corso.",
-                    },
-                    "date": {
-                        "type": "string",
-                        "description": "Data della lezione di prova in formato YYYY-MM-DD.",
-                    },
-                },
-                "required": ["student_id", "course_id", "date"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_pricing",
-            "description": (
-                "Calcola il costo dell'abbonamento in base al numero di corsi. "
-                "Primo corso €160, ogni corso aggiuntivo €128 (−20%). "
-                "Usa quando il chiamante chiede informazioni sui prezzi."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "course_count": {
-                        "type": "integer",
-                        "description": "Numero di corsi a cui lo studente vuole iscriversi.",
-                    },
-                },
-                "required": ["course_count"],
-            },
-        },
-    },
-]
+# OPENAI_TOOLS is imported from tools_schema (shared with the eval runner).
 
 
 @app.get("/health")
@@ -354,14 +150,17 @@ async def media_stream(websocket: WebSocket) -> None:
     tools_called: set[str] = set()
     latency_response_ms: list[float] = []  # per-turn STT-final -> first frame out
     latency_ttft_ms: list[float] = []      # per-turn STT-final -> first LLM token
+    all_turn_timings: list[dict] = []      # full per-turn timing dicts → turn_metrics
+    barge_in_count: int = 0
     last_barge_in_time: float = 0.0
     BARGE_IN_COOLDOWN: float = 0.8
 
     async def _barge_in() -> None:
-        nonlocal is_speaking, last_barge_in_time
+        nonlocal is_speaking, last_barge_in_time, barge_in_count
         if not is_speaking:
             return
         is_speaking = False
+        barge_in_count += 1
         last_barge_in_time = time.time()
         while not tts_queue.empty():
             tts_queue.get_nowait()
@@ -440,6 +239,8 @@ async def media_stream(websocket: WebSocket) -> None:
             # Attach the turn's timing dict to the FIRST sentence only; the TTS
             # worker stamps t2/t3 and logs the breakdown when it plays it.
             nonlocal first_emitted
+            if turn_timing is not None:
+                turn_timing["tts_chars"] += len(sentence)  # all sentences of the turn
             if not first_emitted:
                 first_emitted = True
                 if turn_timing is not None:
@@ -484,10 +285,16 @@ async def media_stream(websocket: WebSocket) -> None:
             turn_timing = {
                 "t0": item["t0"],          # STT final transcript received
                 "t_first_token": None,     # LLM first content token
+                "t_llm_end": None,         # LLM last token (full response)
                 "t_first_sentence": None,  # first sentence handed to TTS
+                "t_tts_end": None,         # first sentence last TTS chunk
                 "tool_ms": 0.0,            # cumulative tool execution time
                 "tool_rounds": 0,
+                "prompt_tokens": 0,        # summed across LLM rounds this turn
+                "completion_tokens": 0,
+                "tts_chars": 0,            # summed across sentences this turn
             }
+            all_turn_timings.append(turn_timing)
             first_emitted = False
             llm_busy = True
             print(f"[LLM] input: {text}")
@@ -510,11 +317,16 @@ async def media_stream(websocket: WebSocket) -> None:
                             tools=OPENAI_TOOLS,
                             tool_choice="auto",
                             stream=True,
+                            stream_options={"include_usage": True},
                         ),
                         timeout=10.0,
                     )
 
                     async for chunk in stream:
+                        # The final chunk (include_usage) carries token usage and no choices.
+                        if getattr(chunk, "usage", None) and turn_timing is not None:
+                            turn_timing["prompt_tokens"] += chunk.usage.prompt_tokens or 0
+                            turn_timing["completion_tokens"] += chunk.usage.completion_tokens or 0
                         if not chunk.choices:
                             continue
                         delta = chunk.choices[0].delta
@@ -574,6 +386,8 @@ async def media_stream(websocket: WebSocket) -> None:
                                 "content": json.dumps(result, ensure_ascii=False),
                             })
                     else:
+                        if turn_timing is not None:
+                            turn_timing["t_llm_end"] = time.perf_counter()
                         if sentence_buf.strip():
                             await emit_tts(sentence_buf.strip())
                         history.append({"role": "assistant", "content": text_acc})
@@ -668,6 +482,9 @@ async def media_stream(websocket: WebSocket) -> None:
                     while True:
                         pcm_chunk = await asyncio.wait_for(chunk_queue.get(), timeout=15.0)
                         if pcm_chunk is None:
+                            # End of this sentence's synthesis; stamp TTS end for the timed turn.
+                            if current_timing is not None and current_timing.get("t_tts_end") is None:
+                                current_timing["t_tts_end"] = time.perf_counter()
                             break
                         if not is_speaking:
                             break
@@ -806,8 +623,58 @@ async def media_stream(websocket: WebSocket) -> None:
                 "n_turns": len(latency_response_ms),
             }).execute()
 
+        def _ms(a: float | None, b: float | None) -> int | None:
+            return round((b - a) * 1000) if a and b else None
+
+        def _insert_traces() -> None:
+            # Per-turn telemetry + per-call rollup with approximate cost.
+            call_id = stream_sid or "unknown"
+            rows = [
+                {
+                    "call_id": call_id,
+                    "turn_index": i,
+                    "ttft_ms": _ms(t.get("t0"), t.get("t_first_token")),
+                    "llm_ms": _ms(t.get("t0"), t.get("t_llm_end")),
+                    "tts_ttfb_ms": _ms(t.get("t_first_sentence"), t.get("t2")),
+                    "tts_ms": _ms(t.get("t_first_sentence"), t.get("t_tts_end")),
+                    "response_ms": _ms(t.get("t0"), t.get("t3")),
+                    "tool_rounds": t.get("tool_rounds", 0),
+                    "tool_ms": round(t.get("tool_ms", 0)),
+                    "prompt_tokens": t.get("prompt_tokens", 0),
+                    "completion_tokens": t.get("completion_tokens", 0),
+                    "tts_chars": t.get("tts_chars", 0),
+                }
+                for i, t in enumerate(all_turn_timings)
+            ]
+            if rows:
+                supabase.table("turn_metrics").insert(rows).execute()
+
+            total_pt = sum(t.get("prompt_tokens", 0) for t in all_turn_timings)
+            total_ct = sum(t.get("completion_tokens", 0) for t in all_turn_timings)
+            total_chars = sum(t.get("tts_chars", 0) for t in all_turn_timings)
+            duration = int(time.time() - call_start)
+            supabase.table("call_traces").insert({
+                "call_id": call_id,
+                "phone_from": caller_phone or "unknown",
+                "student_id": student_id,
+                "language": tts_language,
+                "duration_seconds": duration,
+                "n_turns": len(all_turn_timings),
+                "barge_in_count": barge_in_count,
+                "total_prompt_tokens": total_pt,
+                "total_completion_tokens": total_ct,
+                "total_tts_chars": total_chars,
+                "cost_usd": call_cost_usd(total_pt, total_ct, total_chars, duration),
+            }).execute()
+
         try:
             await asyncio.to_thread(_insert_log)
             print(f"[log] chiamata registrata — intent={_derive_intent()} duration={int(time.time() - call_start)}s")
         except Exception as exc:
             print(f"[log] errore insert: {exc}")
+
+        try:
+            await asyncio.to_thread(_insert_traces)
+            print(f"[trace] telemetria registrata — turni={len(all_turn_timings)} barge_in={barge_in_count}")
+        except Exception as exc:
+            print(f"[trace] errore insert: {exc}")
