@@ -352,6 +352,8 @@ async def media_stream(websocket: WebSocket) -> None:
     call_start: float = time.time()
     student_id: str | None = None
     tools_called: set[str] = set()
+    latency_response_ms: list[float] = []  # per-turn STT-final -> first frame out
+    latency_ttft_ms: list[float] = []      # per-turn STT-final -> first LLM token
     last_barge_in_time: float = 0.0
     BARGE_IN_COOLDOWN: float = 0.8
 
@@ -598,12 +600,18 @@ async def media_stream(websocket: WebSocket) -> None:
         def _log_latency(ct: dict) -> None:
             def ms(a, b) -> str:
                 return f"{(b - a) * 1000:.0f}ms" if a and b else "n/a"
+            # Accumulate per-call samples for the persisted aggregate (see _insert_log).
+            t0, t3, tft = ct["t0"], ct.get("t3"), ct.get("t_first_token")
+            if t3:
+                latency_response_ms.append((t3 - t0) * 1000)
+            if tft:
+                latency_ttft_ms.append((tft - t0) * 1000)
             # ttft (t0→first content token) includes tool time on tool turns;
             # tool_ms is reported separately so it can be reasoned about.
             print(
-                f"[latency] ttft={ms(ct['t0'], ct.get('t_first_token'))} "
+                f"[latency] ttft={ms(ct['t0'], tft)} "
                 f"tts_ttfb={ms(ct.get('t_first_sentence'), ct.get('t2'))} "
-                f"total_response={ms(ct['t0'], ct.get('t3'))} "
+                f"total_response={ms(ct['t0'], t3)} "
                 f"tool_rounds={ct.get('tool_rounds', 0)} "
                 f"tool_ms={ct.get('tool_ms', 0):.0f}"
             )
@@ -782,6 +790,9 @@ async def media_stream(websocket: WebSocket) -> None:
                 return "info_fornite"
             return "unknown"
 
+        def _avg(samples: list[float]) -> int | None:
+            return round(sum(samples) / len(samples)) if samples else None
+
         def _insert_log() -> None:
             supabase.table("call_logs").insert({
                 "student_id": student_id,
@@ -790,6 +801,9 @@ async def media_stream(websocket: WebSocket) -> None:
                 "outcome": _derive_outcome(),
                 "escalated": "notify_secretary" in tools_called,
                 "duration_seconds": int(time.time() - call_start),
+                "avg_response_ms": _avg(latency_response_ms),
+                "avg_ttft_ms": _avg(latency_ttft_ms),
+                "n_turns": len(latency_response_ms),
             }).execute()
 
         try:
