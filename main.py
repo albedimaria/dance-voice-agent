@@ -28,6 +28,7 @@ from openai import AsyncOpenAI
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 from elevenlabs import ElevenLabs
 from prompt import SYSTEM_PROMPT
+from pricing import call_cost_usd
 from tools.supabase_tools import get_student_by_phone, get_courses, create_booking, create_recovery, notify_secretary, get_settings, check_trial_used, create_trial_session, get_pricing
 
 supabase: Client = create_client(
@@ -354,14 +355,17 @@ async def media_stream(websocket: WebSocket) -> None:
     tools_called: set[str] = set()
     latency_response_ms: list[float] = []  # per-turn STT-final -> first frame out
     latency_ttft_ms: list[float] = []      # per-turn STT-final -> first LLM token
+    all_turn_timings: list[dict] = []      # full per-turn timing dicts → turn_metrics
+    barge_in_count: int = 0
     last_barge_in_time: float = 0.0
     BARGE_IN_COOLDOWN: float = 0.8
 
     async def _barge_in() -> None:
-        nonlocal is_speaking, last_barge_in_time
+        nonlocal is_speaking, last_barge_in_time, barge_in_count
         if not is_speaking:
             return
         is_speaking = False
+        barge_in_count += 1
         last_barge_in_time = time.time()
         while not tts_queue.empty():
             tts_queue.get_nowait()
@@ -440,6 +444,8 @@ async def media_stream(websocket: WebSocket) -> None:
             # Attach the turn's timing dict to the FIRST sentence only; the TTS
             # worker stamps t2/t3 and logs the breakdown when it plays it.
             nonlocal first_emitted
+            if turn_timing is not None:
+                turn_timing["tts_chars"] += len(sentence)  # all sentences of the turn
             if not first_emitted:
                 first_emitted = True
                 if turn_timing is not None:
@@ -484,10 +490,16 @@ async def media_stream(websocket: WebSocket) -> None:
             turn_timing = {
                 "t0": item["t0"],          # STT final transcript received
                 "t_first_token": None,     # LLM first content token
+                "t_llm_end": None,         # LLM last token (full response)
                 "t_first_sentence": None,  # first sentence handed to TTS
+                "t_tts_end": None,         # first sentence last TTS chunk
                 "tool_ms": 0.0,            # cumulative tool execution time
                 "tool_rounds": 0,
+                "prompt_tokens": 0,        # summed across LLM rounds this turn
+                "completion_tokens": 0,
+                "tts_chars": 0,            # summed across sentences this turn
             }
+            all_turn_timings.append(turn_timing)
             first_emitted = False
             llm_busy = True
             print(f"[LLM] input: {text}")
@@ -510,11 +522,16 @@ async def media_stream(websocket: WebSocket) -> None:
                             tools=OPENAI_TOOLS,
                             tool_choice="auto",
                             stream=True,
+                            stream_options={"include_usage": True},
                         ),
                         timeout=10.0,
                     )
 
                     async for chunk in stream:
+                        # The final chunk (include_usage) carries token usage and no choices.
+                        if getattr(chunk, "usage", None) and turn_timing is not None:
+                            turn_timing["prompt_tokens"] += chunk.usage.prompt_tokens or 0
+                            turn_timing["completion_tokens"] += chunk.usage.completion_tokens or 0
                         if not chunk.choices:
                             continue
                         delta = chunk.choices[0].delta
@@ -574,6 +591,8 @@ async def media_stream(websocket: WebSocket) -> None:
                                 "content": json.dumps(result, ensure_ascii=False),
                             })
                     else:
+                        if turn_timing is not None:
+                            turn_timing["t_llm_end"] = time.perf_counter()
                         if sentence_buf.strip():
                             await emit_tts(sentence_buf.strip())
                         history.append({"role": "assistant", "content": text_acc})
@@ -668,6 +687,9 @@ async def media_stream(websocket: WebSocket) -> None:
                     while True:
                         pcm_chunk = await asyncio.wait_for(chunk_queue.get(), timeout=15.0)
                         if pcm_chunk is None:
+                            # End of this sentence's synthesis; stamp TTS end for the timed turn.
+                            if current_timing is not None and current_timing.get("t_tts_end") is None:
+                                current_timing["t_tts_end"] = time.perf_counter()
                             break
                         if not is_speaking:
                             break
@@ -806,8 +828,58 @@ async def media_stream(websocket: WebSocket) -> None:
                 "n_turns": len(latency_response_ms),
             }).execute()
 
+        def _ms(a: float | None, b: float | None) -> int | None:
+            return round((b - a) * 1000) if a and b else None
+
+        def _insert_traces() -> None:
+            # Per-turn telemetry + per-call rollup with approximate cost.
+            call_id = stream_sid or "unknown"
+            rows = [
+                {
+                    "call_id": call_id,
+                    "turn_index": i,
+                    "ttft_ms": _ms(t.get("t0"), t.get("t_first_token")),
+                    "llm_ms": _ms(t.get("t0"), t.get("t_llm_end")),
+                    "tts_ttfb_ms": _ms(t.get("t_first_sentence"), t.get("t2")),
+                    "tts_ms": _ms(t.get("t_first_sentence"), t.get("t_tts_end")),
+                    "response_ms": _ms(t.get("t0"), t.get("t3")),
+                    "tool_rounds": t.get("tool_rounds", 0),
+                    "tool_ms": round(t.get("tool_ms", 0)),
+                    "prompt_tokens": t.get("prompt_tokens", 0),
+                    "completion_tokens": t.get("completion_tokens", 0),
+                    "tts_chars": t.get("tts_chars", 0),
+                }
+                for i, t in enumerate(all_turn_timings)
+            ]
+            if rows:
+                supabase.table("turn_metrics").insert(rows).execute()
+
+            total_pt = sum(t.get("prompt_tokens", 0) for t in all_turn_timings)
+            total_ct = sum(t.get("completion_tokens", 0) for t in all_turn_timings)
+            total_chars = sum(t.get("tts_chars", 0) for t in all_turn_timings)
+            duration = int(time.time() - call_start)
+            supabase.table("call_traces").insert({
+                "call_id": call_id,
+                "phone_from": caller_phone or "unknown",
+                "student_id": student_id,
+                "language": tts_language,
+                "duration_seconds": duration,
+                "n_turns": len(all_turn_timings),
+                "barge_in_count": barge_in_count,
+                "total_prompt_tokens": total_pt,
+                "total_completion_tokens": total_ct,
+                "total_tts_chars": total_chars,
+                "cost_usd": call_cost_usd(total_pt, total_ct, total_chars, duration),
+            }).execute()
+
         try:
             await asyncio.to_thread(_insert_log)
             print(f"[log] chiamata registrata — intent={_derive_intent()} duration={int(time.time() - call_start)}s")
         except Exception as exc:
             print(f"[log] errore insert: {exc}")
+
+        try:
+            await asyncio.to_thread(_insert_traces)
+            print(f"[trace] telemetria registrata — turni={len(all_turn_timings)} barge_in={barge_in_count}")
+        except Exception as exc:
+            print(f"[trace] errore insert: {exc}")
