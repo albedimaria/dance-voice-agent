@@ -344,8 +344,8 @@ async def media_stream(websocket: WebSocket) -> None:
     tts_language: str = "it"  # updated from student.language_preference on call start
     dg_connection = deepgram.listen.asynclive.v("1")
     audio_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
-    llm_queue: asyncio.Queue[str | None] = asyncio.Queue()
-    tts_queue: asyncio.Queue[str | None] = asyncio.Queue()
+    llm_queue: asyncio.Queue[dict | None] = asyncio.Queue()
+    tts_queue: asyncio.Queue[dict | None] = asyncio.Queue()
     history: list[dict] = []
     is_speaking: bool = False
     llm_busy: bool = False
@@ -390,7 +390,7 @@ async def media_stream(websocket: WebSocket) -> None:
                         llm_queue.get_nowait()
                     except asyncio.QueueEmpty:
                         break
-                await llm_queue.put(transcript)
+                await llm_queue.put({"text": transcript, "t0": time.perf_counter()})
             else:
                 print(f"[STT partial] {transcript}")
                 await _barge_in()
@@ -430,6 +430,22 @@ async def media_stream(websocket: WebSocket) -> None:
 
         sentence_re = re.compile(r'(?<=[.!?])\s+')
 
+        # Per-turn latency timing, threaded to the TTS worker via the first sentence.
+        turn_timing: dict | None = None
+        first_emitted = False
+
+        async def emit_tts(sentence: str) -> None:
+            # Attach the turn's timing dict to the FIRST sentence only; the TTS
+            # worker stamps t2/t3 and logs the breakdown when it plays it.
+            nonlocal first_emitted
+            if not first_emitted:
+                first_emitted = True
+                if turn_timing is not None:
+                    turn_timing["t_first_sentence"] = time.perf_counter()
+                await tts_queue.put({"text": sentence, "timing": turn_timing})
+            else:
+                await tts_queue.put({"text": sentence, "timing": None})
+
         async def _dispatch_tool(tc_id: str, fn: str, raw_args: str) -> tuple[str, dict]:
             try:
                 args = json.loads(raw_args)
@@ -459,9 +475,18 @@ async def media_stream(websocket: WebSocket) -> None:
             return tc_id, result
 
         while True:
-            text = await llm_queue.get()
-            if text is None:
+            item = await llm_queue.get()
+            if item is None:
                 break
+            text = item["text"]
+            turn_timing = {
+                "t0": item["t0"],          # STT final transcript received
+                "t_first_token": None,     # LLM first content token
+                "t_first_sentence": None,  # first sentence handed to TTS
+                "tool_ms": 0.0,            # cumulative tool execution time
+                "tool_rounds": 0,
+            }
+            first_emitted = False
             llm_busy = True
             print(f"[LLM] input: {text}")
             history.append({"role": "user", "content": text})
@@ -506,6 +531,8 @@ async def media_stream(websocket: WebSocket) -> None:
                                         tool_calls_acc[idx]["arguments"] += tc.function.arguments
 
                         elif delta.content:
+                            if turn_timing is not None and turn_timing["t_first_token"] is None:
+                                turn_timing["t_first_token"] = time.perf_counter()
                             text_acc += delta.content
                             sentence_buf += delta.content
                             while True:
@@ -515,7 +542,7 @@ async def media_stream(websocket: WebSocket) -> None:
                                 sentence = sentence_buf[:m.start() + 1].strip()
                                 sentence_buf = sentence_buf[m.end():]
                                 if sentence:
-                                    await tts_queue.put(sentence)
+                                    await emit_tts(sentence)
 
                     if tool_calls_acc:
                         messages.append({
@@ -530,10 +557,14 @@ async def media_stream(websocket: WebSocket) -> None:
                                 for tc in tool_calls_acc.values()
                             ],
                         })
+                        _tool_start = time.perf_counter()
                         results = await asyncio.gather(*[
                             _dispatch_tool(tc["id"], tc["name"], tc["arguments"])
                             for tc in tool_calls_acc.values()
                         ])
+                        if turn_timing is not None:
+                            turn_timing["tool_ms"] += (time.perf_counter() - _tool_start) * 1000
+                            turn_timing["tool_rounds"] += 1
                         for tc_id, result in results:
                             messages.append({
                                 "role": "tool",
@@ -542,13 +573,13 @@ async def media_stream(websocket: WebSocket) -> None:
                             })
                     else:
                         if sentence_buf.strip():
-                            await tts_queue.put(sentence_buf.strip())
+                            await emit_tts(sentence_buf.strip())
                         history.append({"role": "assistant", "content": text_acc})
                         print(f"[LLM] risposta: {text_acc}")
                         break
                 else:
                     fallback = "Mi dispiace, ho avuto un problema tecnico. Riprova o contatta la segreteria."
-                    await tts_queue.put(fallback)
+                    await emit_tts(fallback)
                     history.append({"role": "assistant", "content": fallback})
                     print("[LLM] limite iterazioni raggiunto — fallback inviato")
 
@@ -562,8 +593,27 @@ async def media_stream(websocket: WebSocket) -> None:
         nonlocal is_speaking
         FRAME = 160  # 20ms @ mulaw 8kHz
         loop = asyncio.get_running_loop()
+        current_timing: dict | None = None  # timing of the turn currently playing
+
+        def _log_latency(ct: dict) -> None:
+            def ms(a, b) -> str:
+                return f"{(b - a) * 1000:.0f}ms" if a and b else "n/a"
+            # ttft (t0→first content token) includes tool time on tool turns;
+            # tool_ms is reported separately so it can be reasoned about.
+            print(
+                f"[latency] ttft={ms(ct['t0'], ct.get('t_first_token'))} "
+                f"tts_ttfb={ms(ct.get('t_first_sentence'), ct.get('t2'))} "
+                f"total_response={ms(ct['t0'], ct.get('t3'))} "
+                f"tool_rounds={ct.get('tool_rounds', 0)} "
+                f"tool_ms={ct.get('tool_ms', 0):.0f}"
+            )
 
         async def _send_frame(data: bytes) -> None:
+            # First audio frame of a timed turn → stamp t3 and log the breakdown.
+            if current_timing is not None and not current_timing.get("_logged"):
+                current_timing["_logged"] = True
+                current_timing["t3"] = time.perf_counter()
+                _log_latency(current_timing)
             await websocket.send_text(json.dumps({
                 "event": "media",
                 "streamSid": stream_sid,
@@ -571,9 +621,11 @@ async def media_stream(websocket: WebSocket) -> None:
             }))
 
         while True:
-            text = await tts_queue.get()
-            if text is None:
+            item = await tts_queue.get()
+            if item is None:
                 break
+            text = item["text"]
+            current_timing = item.get("timing")
             print(f"[TTS] sintetizzando: {text} (lang={tts_language})")
             try:
                 buf = b""
@@ -611,6 +663,8 @@ async def media_stream(websocket: WebSocket) -> None:
                             break
                         if not is_speaking:
                             break
+                        if current_timing is not None and current_timing.get("t2") is None:
+                            current_timing["t2"] = time.perf_counter()
                         resampled, ratecv_state = audioop.ratecv(
                             pcm_chunk, 2, 1, 24000, 8000, ratecv_state
                         )
@@ -689,7 +743,7 @@ async def media_stream(websocket: WebSocket) -> None:
                     })
                     print("[settings] settimana di prova attiva")
                 greeting = "Ciao! Sono TropicoCHETA, l'assistente di Ritmo Caliente. Come posso aiutarti?"
-                await tts_queue.put(greeting)
+                await tts_queue.put({"text": greeting, "timing": None})
                 history.append({"role": "assistant", "content": greeting})
             elif event == "stop":
                 print("[stream] terminato")
