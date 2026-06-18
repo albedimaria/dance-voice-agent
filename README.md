@@ -334,6 +334,34 @@ KPIs (end-to-end latency, containment, completion). Latency is sourced from the 
 
 ---
 
+## Evals & Observability
+
+The agent measures itself, end to end.
+
+**Telemetry.** Every call writes per-turn rows to `turn_metrics` (TTFT, full-LLM, TTS-TTFB,
+end-to-end response latency, tool rounds/time, token usage, synthesized characters) and a per-call
+rollup to `call_traces` (token totals, synthesized chars, barge-in count, and an approximate
+`cost_usd` combining GPT-4o tokens, ElevenLabs characters and Twilio minutes). The `/observability`
+dashboard surfaces per-stage latency, end-to-end p50/p95, cost per call and barge-ins. (STT-stage
+latency is intentionally not isolated — on a phone line it is dominated by Deepgram endpointing,
+which happens outside the process.)
+
+**Reproducible eval suite** (`evals/`). `run_evals.py` runs a fixed set of scenarios (course info,
+instructor lookup, pricing, multi-turn booking, trial check, Spanish) through the **same system
+prompt, tool schema, tool functions and model** the production agent uses, and scores
+task-success = the expected tool was called. Reads hit real Supabase; write tools are intercepted
+(not persisted) so runs are reproducible. Each run writes `eval_runs` + `eval_results`, so the
+`/evals` dashboard shows success rate, latency p50/p95, and the trend across runs.
+
+```
+$ python -m evals.run_evals
+6/6 passed (100%) — p50 4198ms · p95 6289ms
+```
+
+This is what turns "I built a voice agent" into "I built a voice agent I can measure and regression-test".
+
+---
+
 ## Stack
 
 | Component | Library | Version |
