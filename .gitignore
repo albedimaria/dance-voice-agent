@@ -153,6 +153,10 @@ activemq-data/
 .venv
 env/
 venv/
+
+# Local-only: IDE/agent config and personal interview-prep notes (not for the public repo)
+.claude/
+STUDY_GUIDE.md
 ENV/
 env.bak/
 venv.bak/
