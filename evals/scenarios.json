@@ -19,16 +19,19 @@
   },
   {
     "id": "prenotazione",
-    "name": "Prenotazione lezione",
+    "name": "Prenotazione lezione (multi-turno)",
     "system": "Stai parlando con Giulia Marino, livello base. Abbonamento attivo: sì. student_id: b1000000-0000-0000-0000-000000000001.",
-    "user": "Vorrei prenotare una lezione di bachata base per il 23 giugno 2026.",
+    "turns": [
+      "Vorrei prenotare la lezione di bachata sensual base con Guille, per il 23 giugno 2026.",
+      "Sì, è quella giusta, confermo la prenotazione."
+    ],
     "expect_tool": "create_booking"
   },
   {
     "id": "lezione_prova",
     "name": "Lezione di prova",
     "system": "Stai parlando con Luca Conti, livello intermedio. Abbonamento attivo: sì. student_id: b1000000-0000-0000-0000-000000000002.",
-    "user": "Posso fare una lezione di prova di bachata sensual?",
+    "user": "Posso fare una lezione di prova di bachata sensual intermedio con Guille?",
     "expect_tool": "check_trial_used"
   },
   {

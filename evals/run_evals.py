@@ -47,7 +47,27 @@ supabase = create_client(
 
 MODEL = "gpt-4o"
 MAX_TOOL_ROUNDS = 10
+SCENARIO_DELAY_S = 12  # spacing between scenarios to stay under the OpenAI TPM limit
 SCENARIOS_PATH = os.path.join(os.path.dirname(__file__), "scenarios.json")
+
+
+async def _create(messages: list[dict]):
+    """Create a completion, retrying with backoff on rate-limit (429)."""
+    for attempt in range(5):
+        try:
+            return await openai_client.chat.completions.create(
+                model=MODEL,
+                messages=messages,
+                tools=OPENAI_TOOLS,
+                tool_choice="auto",
+                stream=False,
+            )
+        except Exception as exc:
+            msg = str(exc).lower()
+            if ("rate_limit" in msg or "429" in msg) and attempt < 4:
+                await asyncio.sleep(8 * (attempt + 1))
+                continue
+            raise
 
 # Read-only tools run for real against Supabase; everything else is a side effect
 # we intercept (record the decision, return a simulated success) to keep runs pure.
@@ -72,7 +92,9 @@ async def run_scenario(sc: dict) -> dict:
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
     if sc.get("system"):
         messages.append({"role": "system", "content": sc["system"]})
-    messages.append({"role": "user", "content": sc["user"]})
+    # A scenario is one or more user turns (multi-turn captures flows like
+    # book → confirm → create_booking). `user` is shorthand for a single turn.
+    user_turns: list[str] = sc.get("turns") or [sc["user"]]
 
     tools_called: list[dict] = []
     writes: list[str] = []
@@ -80,47 +102,45 @@ async def run_scenario(sc: dict) -> dict:
     final_text = ""
 
     t0 = time.perf_counter()
-    for _ in range(MAX_TOOL_ROUNDS):
-        resp = await openai_client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            tools=OPENAI_TOOLS,
-            tool_choice="auto",
-            stream=False,
-        )
-        if resp.usage:
-            prompt_tokens += resp.usage.prompt_tokens
-            completion_tokens += resp.usage.completion_tokens
-        msg = resp.choices[0].message
-        if msg.tool_calls:
-            messages.append({
-                "role": "assistant",
-                "content": msg.content,
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
-                    }
-                    for tc in msg.tool_calls
-                ],
-            })
-            for tc in msg.tool_calls:
-                fn = tc.function.name
-                try:
-                    args = json.loads(tc.function.arguments or "{}")
-                except Exception:
-                    args = {}
-                tools_called.append({"name": fn, "args": args})
-                result = await _dispatch(fn, args, writes)
+    for user_msg in user_turns:
+        messages.append({"role": "user", "content": user_msg})
+        for _ in range(MAX_TOOL_ROUNDS):
+            resp = await _create(messages)
+            if resp.usage:
+                prompt_tokens += resp.usage.prompt_tokens
+                completion_tokens += resp.usage.completion_tokens
+            msg = resp.choices[0].message
+            if msg.tool_calls:
                 messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": json.dumps(result, ensure_ascii=False),
+                    "role": "assistant",
+                    "content": msg.content,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                        }
+                        for tc in msg.tool_calls
+                    ],
                 })
-        else:
-            final_text = msg.content or ""
-            break
+                for tc in msg.tool_calls:
+                    fn = tc.function.name
+                    try:
+                        args = json.loads(tc.function.arguments or "{}")
+                    except Exception:
+                        args = {}
+                    tools_called.append({"name": fn, "args": args})
+                    result = await _dispatch(fn, args, writes)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps(result, ensure_ascii=False),
+                    })
+            else:
+                final_text = msg.content or ""
+                # Keep the assistant turn in context for the next user turn.
+                messages.append({"role": "assistant", "content": final_text})
+                break
     latency_ms = round((time.perf_counter() - t0) * 1000)
 
     called_names = [t["name"] for t in tools_called]
@@ -165,10 +185,22 @@ async def main_async() -> None:
 
     print(f"[eval] running {len(scenarios)} scenarios against {MODEL} (real reads, stubbed writes)\n")
     results = []
-    for sc in scenarios:
-        r = await run_scenario(sc)
-        mark = "PASS" if r["passed"] else "FAIL"
-        print(f"  [{mark}] {r['name']:<28} {r['latency_ms']:>6}ms  tools={r['actual']}")
+    for i, sc in enumerate(scenarios):
+        if i > 0:
+            await asyncio.sleep(SCENARIO_DELAY_S)  # respect TPM limit
+        try:
+            r = await run_scenario(sc)
+        except Exception as exc:
+            print(f"  [ERR ] {sc['name']:<28} {exc}")
+            r = {
+                "scenario_id": sc["id"], "name": sc["name"], "passed": False,
+                "expected": json.dumps(sc.get("expect_tool"), ensure_ascii=False),
+                "actual": json.dumps({"error": str(exc)[:200]}, ensure_ascii=False),
+                "latency_ms": 0, "tool_calls": "[]", "final_text": "",
+            }
+        else:
+            mark = "PASS" if r["passed"] else "FAIL"
+            print(f"  [{mark}] {r['name']:<28} {r['latency_ms']:>6}ms  tools={r['actual']}")
         results.append(r)
 
     n = len(results)
