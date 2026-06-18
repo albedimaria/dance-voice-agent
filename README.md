@@ -6,6 +6,16 @@ The agent speaks Italian, identifies callers by phone number, and operates withi
 
 ---
 
+## Project status & privacy
+
+This is a functional prototype, deployed and operational on Render, currently in discussion with a
+real Latin-dance school for production adoption. To protect the prospective client's
+confidentiality, all client-identifying details (name, addresses, phone numbers) have been replaced
+with fictional placeholders throughout the code and git history. The architecture, pipeline, and
+business logic are unchanged and fully representative of the real system.
+
+---
+
 ## Architecture Overview
 
 ```
