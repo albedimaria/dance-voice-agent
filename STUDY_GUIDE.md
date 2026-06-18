@@ -31,6 +31,9 @@ Punti che differenziano (dilli se c'è spazio):
 - **Pipeline custom**, non Vapi/Bland → controllo totale su latenza, costi, scelta dei modelli.
 - **Barge-in**: puoi interromperla mentre parla, come con un umano.
 - **Regole di business lato server**, non delegate all'LLM (capacità corsi, regole recuperi).
+- **Latenza instrumentata + dashboard**: misuro la latenza server-side per turno e la mostro,
+  con contain rate e completion rate, in una dashboard admin Next.js separata — il pezzo
+  "piattaforma" oltre al voice agent.
 
 ---
 
@@ -304,16 +307,28 @@ Utente smette di parlare
    └─ (D) Conversione + invio primo frame a Twilio               ~ trascurabile
 ```
 
+**Come la misuro (instrumentata, non a occhio):**
+Un dict di timing viaggia attraverso le code (agganciato alla prima frase del turno). Quando
+parte il primo frame audio, `tts_sender` logga `[latency] ttft=… tts_ttfb=… total_response=…
+tool_rounds=… tool_ms=…`:
+- `ttft` = STT-final → primo token LLM (= B, include i tool sui turni con tool → `tool_ms` a parte)
+- `tts_ttfb` = prima frase → primo chunk ElevenLabs (= C)
+- `total_response` = STT-final → primo frame out (= B+C+D, la latenza server-side che possiedo)
+- A fine chiamata le medie (`avg_response_ms`, `avg_ttft_ms`, `n_turns`) vengono **persistite in
+  `call_logs`** (migration 006) e mostrate nella **dashboard** (KPI Latenza + colonna per chiamata).
+Quello che NON misuro è (A) l'endpointing Deepgram e la rete PSTN — fuori dal processo.
+
 **Come la mitigo nel codice:**
 - **Streaming a ogni livello**: STT interim, LLM token-streaming, TTS chunk-streaming.
 - **Frase-per-frase**: il TTS parte sulla prima frase, non a fine risposta (§5.8).
 - **Cache corsi**: toglie round-trip DB nei tool (§5.7).
 - **Tool in parallelo**: `asyncio.gather` invece che in sequenza.
 
-🎤 *"Qual è il tuo collo di bottiglia di latenza?"* → "L'endpointing STT: aspetto ~1s di
-silenzio per essere sicuro che l'utente abbia finito. È la leva più grossa. Si potrebbe
-abbassare `utterance_end_ms` o usare un modello di endpointing semantico, al prezzo di tagliare
-le pause lunghe. Il resto è già tutto in streaming per minimizzare il time-to-first-sound."
+🎤 *"Qual è il tuo collo di bottiglia di latenza?"* → "Lo so perché lo misuro: la latenza
+server-side (`total_response`) la loggo e la persisto per chiamata. Il collo di bottiglia
+percepito però è a monte di quello che possiedo — l'endpointing STT: aspetto ~1s di silenzio per
+essere sicuro che l'utente abbia finito (`utterance_end_ms`). Si potrebbe abbassare o usare
+endpointing semantico, al prezzo di tagliare le pause lunghe. Il resto è già tutto in streaming."
 
 ---
 
@@ -348,8 +363,12 @@ Meglio che li dica tu con consapevolezza. Sono già nel README ("What would need
   retry/circuit-breaker. → *Aggiungerei retry con backoff sui tool idempotenti.*
 - **Niente test automatici**: la pipeline si prova con chiamate live. → *Scriverei test sul
   layer tool (mock Supabase) e un test di integrazione sul parsing degli eventi Twilio.*
-- **Niente admin UI nel backend**: orari e settings si toccano in Supabase (ma esiste la
-  dashboard separata Next.js per gli analytics).
+- **Osservabilità: prima base, non completa.** Ora la latenza per-turno è loggata e le medie
+  per-chiamata persistite in `call_logs` + mostrate nella dashboard (TTFT, response, contain rate,
+  completion rate). → *Mancano ancora: tracing distribuito, percentili (p95/p99) invece della sola
+  media, e alerting su soglie. Li aggiungerei con OpenTelemetry + un grafico p95 sulla dashboard.*
+- **Niente admin UI per la config nel backend**: orari e settings si toccano in Supabase (la
+  dashboard Next.js separata copre la parte analytics/monitoring, non l'editing dei corsi).
 - **Cold start su Render free** (vedi §11): la prima chiamata dopo inattività può cadere.
 
 🎤 *"Cosa miglioreresti?"* → scegli 2-3 di questi e proponi la soluzione. Mostra maturità.
@@ -389,6 +408,13 @@ sempre caldo. (Setup nei passi che ti ho dato in chat.) In alternativa: upgrade 
 🎤 Se a colloquio ti chiedono di deployment, questo è un bel punto: dimostra che capisci la
 differenza tra **attività interna del processo** e **traffico HTTP in ingresso** che i PaaS
 usano per misurare l'idle.
+
+**Altro gotcha di deploy (buon aneddoto):** il deploy è esploso con "Port scan timeout — no open
+ports detected". Causa: `audioop` (usato per il resample/μ-law del TTS) è stato **rimosso dalla
+stdlib in Python 3.13** (PEP 594), e l'immagine di default di Render è passata a 3.13+ → l'app
+crashava all'import → uvicorn non faceva il bind. Fix: il backport `audioop-lts` in
+`requirements.txt` con marker `python_version >= "3.13"`. Lezione: "port scan timeout" su un PaaS
+≈ l'app crasha prima del bind — quasi sempre un errore di import, non un problema di porta.
 
 ---
 

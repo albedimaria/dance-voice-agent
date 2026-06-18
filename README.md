@@ -308,6 +308,32 @@ The Supabase keepalive loop (pings the DB every 5 days) prevents the connection 
 
 ---
 
+## Admin Dashboard
+
+A separate Next.js (App Router) application provides the monitoring and analytics surface for the
+school's staff. It is a distinct, access-controlled deployment — **not publicly accessible**, so it
+is documented here rather than linked for anonymous use.
+
+**Stack**: Next.js (App Router, Server Components) · `@supabase/ssr` for cookie-based auth ·
+Tailwind v4 · shadcn/ui · Recharts · deployed on Vercel. Auth is enforced server-side (a Server
+Action signs in; the dashboard layout redirects to `/login` without a session). It reads the same
+Supabase project as the voice agent, through the **anon key under RLS** (authenticated-only SELECT
+policies) — never the service role key.
+
+**What it shows**:
+- **KPIs**: calls today · average response latency (with average TTFT) · contain rate (share of
+  calls handled without human escalation) · completion rate (share reaching a useful outcome —
+  booking, recovery, info) · average call duration · bookings created.
+- **28-day call volume** bar chart.
+- **Recent calls table**: timestamp, caller, detected intent, outcome, duration, per-call latency,
+  escalation flag.
+
+The latency, contain-rate and completion-rate metrics map directly to the standard voice-agent
+KPIs (end-to-end latency, containment, completion). Latency is sourced from the `avg_response_ms` /
+`avg_ttft_ms` / `n_turns` columns the agent writes to `call_logs` at the end of each call.
+
+---
+
 ## Stack
 
 | Component | Library | Version |
