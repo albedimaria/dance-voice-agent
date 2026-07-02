@@ -38,6 +38,7 @@ from tools.supabase_tools import (
     get_pricing,
     get_settings,
 )
+from pricing import GPT4O_INPUT_USD_PER_1K, GPT4O_OUTPUT_USD_PER_1K, ELEVEN_USD_PER_1K_CHARS
 
 openai_client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
 supabase = create_client(
@@ -100,15 +101,21 @@ async def run_scenario(sc: dict) -> dict:
     writes: list[str] = []
     prompt_tokens = completion_tokens = 0
     final_text = ""
+    # Per-conversational-turn cost samples (one entry per user_msg answered),
+    # so we can estimate real cost/turn from more than one sample call.
+    turn_costs: list[float] = []
 
     t0 = time.perf_counter()
     for user_msg in user_turns:
         messages.append({"role": "user", "content": user_msg})
+        turn_prompt_tok = turn_completion_tok = 0
         for _ in range(MAX_TOOL_ROUNDS):
             resp = await _create(messages)
             if resp.usage:
                 prompt_tokens += resp.usage.prompt_tokens
                 completion_tokens += resp.usage.completion_tokens
+                turn_prompt_tok += resp.usage.prompt_tokens
+                turn_completion_tok += resp.usage.completion_tokens
             msg = resp.choices[0].message
             if msg.tool_calls:
                 messages.append({
@@ -140,6 +147,14 @@ async def run_scenario(sc: dict) -> dict:
                 final_text = msg.content or ""
                 # Keep the assistant turn in context for the next user turn.
                 messages.append({"role": "assistant", "content": final_text})
+                # Cost of this turn: real LLM tokens + TTS cost estimated from
+                # the reply length (no real synthesis happens in eval).
+                llm_cost = (
+                    (turn_prompt_tok / 1000) * GPT4O_INPUT_USD_PER_1K
+                    + (turn_completion_tok / 1000) * GPT4O_OUTPUT_USD_PER_1K
+                )
+                tts_cost = (len(final_text) / 1000) * ELEVEN_USD_PER_1K_CHARS
+                turn_costs.append(round(llm_cost + tts_cost, 5))
                 break
     latency_ms = round((time.perf_counter() - t0) * 1000)
 
@@ -157,6 +172,7 @@ async def run_scenario(sc: dict) -> dict:
         "latency_ms": latency_ms,
         "tool_calls": json.dumps(tools_called, ensure_ascii=False),
         "final_text": final_text,
+        "turn_costs": turn_costs,
     }
 
 
@@ -196,7 +212,7 @@ async def main_async() -> None:
                 "scenario_id": sc["id"], "name": sc["name"], "passed": False,
                 "expected": json.dumps(sc.get("expect_tool"), ensure_ascii=False),
                 "actual": json.dumps({"error": str(exc)[:200]}, ensure_ascii=False),
-                "latency_ms": 0, "tool_calls": "[]", "final_text": "",
+                "latency_ms": 0, "tool_calls": "[]", "final_text": "", "turn_costs": [],
             }
         else:
             mark = "PASS" if r["passed"] else "FAIL"
@@ -212,6 +228,14 @@ async def main_async() -> None:
     p95 = _percentile(lats, 95)
 
     print(f"\n[eval] {n_passed}/{n} passed ({success_rate}%) — avg {avg_ms}ms · p50 {p50}ms · p95 {p95}ms")
+
+    all_turn_costs = [c for r in results for c in r.get("turn_costs", [])]
+    if all_turn_costs:
+        avg_turn_cost = sum(all_turn_costs) / len(all_turn_costs)
+        print(
+            f"[eval] cost/turn: avg ${avg_turn_cost:.4f} (n={len(all_turn_costs)} turns) "
+            f"— min ${min(all_turn_costs):.4f} · max ${max(all_turn_costs):.4f}"
+        )
 
     run = supabase.table("eval_runs").insert({
         "git_sha": _git_sha(),
