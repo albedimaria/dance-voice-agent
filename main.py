@@ -610,7 +610,9 @@ async def media_stream(websocket: WebSocket) -> None:
                         "content": "CONTESTO: Settimana di prova attiva. Tutti i corsi sono gratuiti e aperti.",
                     })
                     print("[settings] settimana di prova attiva")
-                greeting = "Ciao! Sono TropicoCHETA, l'assistente di Ritmo Caliente. Come posso aiutarti?"
+                # AI-disclosure at first contact (EU AI Act Art. 50(1)): the caller
+                # is told up front they're talking to an automated system.
+                greeting = "Ciao! Sono TropicoCHETA, l'assistente vocale automatico di Ritmo Caliente. Come posso aiutarti?"
                 await tts_queue.put({"text": greeting, "timing": None})
                 history.append({"role": "assistant", "content": greeting})
             elif event == "stop":
