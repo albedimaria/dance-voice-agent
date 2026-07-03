@@ -9,7 +9,8 @@ GPT4O_INPUT_USD_PER_1K = 0.0025
 GPT4O_OUTPUT_USD_PER_1K = 0.0100
 
 # ElevenLabs TTS — billed per character; rate varies a lot by plan. Approx.
-ELEVEN_USD_PER_1K_CHARS = 0.30
+# eleven_flash_v2_5 bills 0.5 credits/char (half of eleven_v3's 1 credit/char).
+ELEVEN_USD_PER_1K_CHARS = 0.15
 
 # Twilio inbound voice + Media Streams, per minute. Approx, region-dependent.
 TWILIO_USD_PER_MIN = 0.013

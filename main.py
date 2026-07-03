@@ -5,7 +5,6 @@ load_dotenv()
 import os
 
 import asyncio
-import audioop
 import base64
 from contextlib import asynccontextmanager
 import hashlib
@@ -451,20 +450,21 @@ async def media_stream(websocket: WebSocket) -> None:
             print(f"[TTS] sintetizzando: {text} (lang={tts_language})")
             try:
                 buf = b""
-                ratecv_state = None
                 is_speaking = True
 
                 # Bridge: run sync ElevenLabs generator in a thread and feed
-                # PCM chunks into an async queue for the event loop to consume.
+                # mulaw chunks into an async queue for the event loop to consume.
                 chunk_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
 
                 def _generate_sync() -> None:
                     try:
+                        # ulaw_8000 is Twilio's native format: no resample step,
+                        # no audioop dependency (removed from stdlib in 3.13).
                         for chunk in eleven.text_to_speech.convert_as_stream(
                             voice_id=os.environ["ELEVENLABS_VOICE_ID"],
                             text=text,
-                            model_id="eleven_v3",
-                            output_format="pcm_24000",
+                            model_id="eleven_flash_v2_5",
+                            output_format="ulaw_8000",
                             language_code=tts_language,
                         ):
                             if chunk:
@@ -480,8 +480,8 @@ async def media_stream(websocket: WebSocket) -> None:
 
                 try:
                     while True:
-                        pcm_chunk = await asyncio.wait_for(chunk_queue.get(), timeout=15.0)
-                        if pcm_chunk is None:
+                        mulaw_chunk = await asyncio.wait_for(chunk_queue.get(), timeout=15.0)
+                        if mulaw_chunk is None:
                             # End of this sentence's synthesis; stamp TTS end for the timed turn.
                             if current_timing is not None and current_timing.get("t_tts_end") is None:
                                 current_timing["t_tts_end"] = time.perf_counter()
@@ -490,11 +490,7 @@ async def media_stream(websocket: WebSocket) -> None:
                             break
                         if current_timing is not None and current_timing.get("t2") is None:
                             current_timing["t2"] = time.perf_counter()
-                        resampled, ratecv_state = audioop.ratecv(
-                            pcm_chunk, 2, 1, 24000, 8000, ratecv_state
-                        )
-                        mulaw = audioop.lin2ulaw(resampled, 2)
-                        buf += mulaw
+                        buf += mulaw_chunk
                         while len(buf) >= FRAME:
                             if not is_speaking:
                                 break

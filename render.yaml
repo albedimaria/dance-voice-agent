@@ -6,9 +6,9 @@
 # or when you explicitly connect the repo as a Blueprint. Use it to recreate the
 # service reproducibly, or as the source of truth for the current config.
 #
-# Python version: intentionally NOT pinned here. The app runs on any Python >= 3.11;
-# on Render's current default image (3.13+), the `audioop-lts` backport declared in
-# requirements.txt restores the stdlib `audioop` module removed in 3.13 (PEP 594).
+# Python version: intentionally NOT pinned here. The app runs on any Python >= 3.11,
+# including Render's current default image (3.13+): TTS is requested as ulaw_8000
+# (Twilio-native), so there is no audio resampling and no audioop dependency.
 
 services:
   - type: web

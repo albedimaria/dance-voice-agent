@@ -43,9 +43,8 @@ FastAPI WebSocket handler
     │        ├── create_trial_session ──► Supabase
     │        └── get_pricing          ──► (pure function, no I/O)
     │
-    └──► ElevenLabs TTS (eleven_v3)
-             │  PCM 24kHz streamed chunks
-             │  audioop: resample 24kHz→8kHz, lin2ulaw
+    └──► ElevenLabs TTS (eleven_flash_v2_5)
+             │  mulaw 8kHz streamed chunks (ulaw_8000, Twilio-native)
              │  160-byte frames (20ms mulaw)
              ▼
          Twilio (audio out)
@@ -73,8 +72,8 @@ Deepgram is subscribed to both `SpeechStarted` (VAD) and `Transcript` events, bu
 
 When that interim transcript arrives with `is_speaking = True`: the TTS stream is abandoned mid-chunk, the `tts_queue` is drained, and a `{"event": "clear"}` message is sent to Twilio to flush the audio buffer on the caller's end. The `is_speaking` flag is checked at every 160-byte frame boundary in `tts_sender`, so once triggered the interruption is near-immediate (~20ms). A 0.8s cooldown after a barge-in prevents the tail of the agent's own audio, or the caller's continuing speech, from being mis-interpreted as a second interruption.
 
-**Audio conversion in stdlib**
-ElevenLabs TTS outputs PCM s16le at 24kHz. Twilio expects mulaw at 8kHz. The conversion uses `audioop.ratecv` (resample, preserving state across streaming chunks) and `audioop.lin2ulaw` — both in Python's standard library, no additional dependencies. Output is buffered and flushed in exact 160-byte frames to maintain mulaw frame alignment on the Twilio side.
+**Twilio-native TTS output (no conversion step)**
+TTS is requested as `ulaw_8000` — mulaw at 8kHz, exactly what Twilio Media Streams expects — so chunks flow from ElevenLabs to Twilio with no resampling and no format conversion. Output is buffered and flushed in exact 160-byte frames to maintain mulaw frame alignment on the Twilio side. (Earlier versions requested PCM 24kHz and downsampled with `audioop`, which was removed from the stdlib in Python 3.13; requesting the native format deleted that entire failure mode and ~80% of the TTS bandwidth. Model choice follows the same telephony logic: `eleven_flash_v2_5` — ~75ms model latency, half the cost/char — because an 8kHz phone line physically cannot carry the extra fidelity of the expressive `eleven_v3`. Measured with `evals/tts_bench.py`: median TTFB 385ms → 139ms, total synthesis 1343ms → 244ms.)
 
 **Stateless HMAC tokens for WebSocket auth**
 Twilio's `<Stream>` injects parameters into the WebSocket `start` event. The server mints a short-lived HMAC token (30s TTL) on each `/incoming-call` request, passes it as a stream parameter, and verifies it on `start`. This prevents arbitrary WebSocket connections to `/media-stream` without requiring session storage — safe across multiple workers.
@@ -243,8 +242,7 @@ Currently used: `trial_week_active` (`"true"` / `"false"`).
    └── If text response:
        └── Splits on sentence boundaries → streams sentences to tts_queue
 8. tts_sender dequeues sentences
-   └── Calls ElevenLabs TTS (PCM 24kHz stream, in thread executor)
-   └── audioop: resample 24kHz→8kHz, lin2ulaw
+   └── Calls ElevenLabs TTS (mulaw 8kHz stream via ulaw_8000, in thread executor)
    └── Sends 160-byte mulaw frames to Twilio media
 9. Twilio sends "stop" event (caller hangs up)
 10. Server tears down: cancels Deepgram, drains queues, awaits tasks
@@ -264,7 +262,7 @@ Currently used: `trial_week_active` (`"true"` / `"false"`).
 | `SECRETARY_WHATSAPP` | Secretary's WhatsApp number (E.164) |
 | `DEEPGRAM_API_KEY` | Deepgram API key (Nova-2 streaming) |
 | `OPENAI_API_KEY` | OpenAI API key (GPT-4o) |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key (TTS, eleven_v3) |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key (TTS, eleven_flash_v2_5) |
 | `ELEVENLABS_VOICE_ID` | ElevenLabs voice ID to use for TTS |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only, never exposed to clients) |
@@ -274,7 +272,7 @@ Currently used: `trial_week_active` (`"true"` / `"false"`).
 
 ## Local Setup
 
-**Prerequisites**: Python 3.11+ (see the note on `audioop` under Stack for the 3.13+ caveat)
+**Prerequisites**: Python 3.11+
 
 ```bash
 python -m venv .venv
@@ -366,20 +364,19 @@ This is what turns "I built a voice agent" into "I built a voice agent I can mea
 
 | Component | Library | Version |
 |-----------|---------|---------|
-| Runtime | Python | 3.11+ (3.13+ needs `audioop-lts`) |
+| Runtime | Python | 3.11+ |
 | Web framework | FastAPI | 0.115.5 |
 | ASGI server | Uvicorn | 0.32.1 |
 | Telephony | twilio | 9.3.6 |
 | STT | deepgram-sdk | 3.7.7 |
 | LLM | openai (GPT-4o) | 1.57.0 |
-| TTS | elevenlabs (eleven_v3) | 1.54.0 |
+| TTS | elevenlabs (eleven_flash_v2_5) | 1.54.0 |
 | Database | supabase | 2.10.0 |
 
 **Python version note.** `.python-version` pins 3.11.9 for local development, but the app runs
-on any Python ≥3.11. The one caveat is `audioop` (used for the TTS resample/μ-law conversion in
-`main.py`): it was removed from the standard library in Python 3.13 (PEP 594). On 3.13+ the
-`audioop-lts` backport — declared in `requirements.txt` with an environment marker — restores it,
-so the build works on newer runtimes (e.g. Render's current default image) with no code change.
+on any Python ≥3.11 with no version-specific dependencies. (The former caveat — `audioop`,
+removed from the stdlib in 3.13 — disappeared when TTS switched to Twilio-native `ulaw_8000`
+output: there is no resample step anymore, so the `audioop-lts` backport was dropped.)
 
 ---
 
