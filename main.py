@@ -25,7 +25,7 @@ from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 from openai import AsyncOpenAI
 
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
-from elevenlabs import ElevenLabs
+from websockets.asyncio.client import connect as ws_connect
 from prompt import SYSTEM_PROMPT
 from pricing import call_cost_usd
 from tools_schema import OPENAI_TOOLS
@@ -70,7 +70,6 @@ tw_validator = RequestValidator(os.environ["TWILIO_AUTH_TOKEN"])
 deepgram = DeepgramClient(os.environ["DEEPGRAM_API_KEY"])
 
 openai = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
-eleven = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
 
 # Stateless HMAC tokens for WebSocket auth — works with multiple workers.
 # WS_TOKEN_SECRET must be the same across all instances (set it in env).
@@ -407,7 +406,6 @@ async def media_stream(websocket: WebSocket) -> None:
     async def tts_sender() -> None:
         nonlocal is_speaking
         FRAME = 160  # 20ms @ mulaw 8kHz
-        loop = asyncio.get_running_loop()
         current_timing: dict | None = None  # timing of the turn currently playing
 
         def _log_latency(ct: dict) -> None:
@@ -441,6 +439,47 @@ async def media_stream(websocket: WebSocket) -> None:
                 "media": {"payload": base64.b64encode(data).decode()},
             }))
 
+        # Persistent multi-context TTS WebSocket: one connection per call, kept
+        # warm across sentences and turns (ulaw_8000 is Twilio's native format:
+        # no resample step, no audioop dependency). auto_mode lets ElevenLabs
+        # start generating as soon as a context closes, with no manual chunk
+        # scheduling. Each sentence gets its own context so a barge-in abandons
+        # one context while later sentences start clean; frames still in flight
+        # for an abandoned context are filtered out by context id. ElevenLabs
+        # drops idle sockets (~20s), so connection is re-established lazily.
+        eleven_ws = None
+        eleven_ws_lang: str | None = None
+        ctx_seq = 0
+
+        def _ws_url() -> str:
+            return (
+                f"wss://api.elevenlabs.io/v1/text-to-speech/"
+                f"{os.environ['ELEVENLABS_VOICE_ID']}/multi-stream-input"
+                f"?model_id=eleven_flash_v2_5&output_format=ulaw_8000"
+                f"&auto_mode=true&language_code={tts_language}"
+            )
+
+        async def _ws_open() -> None:
+            nonlocal eleven_ws, eleven_ws_lang
+            if eleven_ws is not None:
+                try:
+                    await eleven_ws.close()
+                except Exception:
+                    pass
+            eleven_ws = await ws_connect(
+                _ws_url(),
+                additional_headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]},
+                open_timeout=10.0,
+            )
+            eleven_ws_lang = tts_language
+
+        # Warm up the TLS+WS handshake before the first sentence needs it.
+        try:
+            await _ws_open()
+        except Exception as exc:
+            print(f"[TTS] pre-connect fallito (riproverò alla prima frase): {exc}")
+            eleven_ws = None
+
         while True:
             item = await tts_queue.get()
             if item is None:
@@ -449,62 +488,70 @@ async def media_stream(websocket: WebSocket) -> None:
             current_timing = item.get("timing")
             print(f"[TTS] sintetizzando: {text} (lang={tts_language})")
             try:
+                ctx_seq += 1
+                ctx = f"s{ctx_seq}"
+                # Whole sentence + close_context: with auto_mode, closing the
+                # context triggers generation immediately. One retry on a fresh
+                # connection covers idle-timeout drops and language switches.
+                for attempt in (0, 1):
+                    try:
+                        if eleven_ws is None or eleven_ws_lang != tts_language:
+                            await _ws_open()
+                        await eleven_ws.send(json.dumps({"text": text + " ", "context_id": ctx}))
+                        await eleven_ws.send(json.dumps({"context_id": ctx, "close_context": True}))
+                        break
+                    except Exception:
+                        if attempt == 1:
+                            raise
+                        eleven_ws = None
+
                 buf = b""
                 is_speaking = True
-
-                # Bridge: run sync ElevenLabs generator in a thread and feed
-                # mulaw chunks into an async queue for the event loop to consume.
-                chunk_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
-
-                def _generate_sync() -> None:
-                    try:
-                        # ulaw_8000 is Twilio's native format: no resample step,
-                        # no audioop dependency (removed from stdlib in 3.13).
-                        for chunk in eleven.text_to_speech.convert_as_stream(
-                            voice_id=os.environ["ELEVENLABS_VOICE_ID"],
-                            text=text,
-                            model_id="eleven_flash_v2_5",
-                            output_format="ulaw_8000",
-                            language_code=tts_language,
-                        ):
-                            if chunk:
-                                asyncio.run_coroutine_threadsafe(
-                                    chunk_queue.put(chunk), loop
-                                ).result()
-                    finally:
-                        asyncio.run_coroutine_threadsafe(
-                            chunk_queue.put(None), loop
-                        ).result()
-
-                generate_future = loop.run_in_executor(None, _generate_sync)
-
-                try:
-                    while True:
-                        mulaw_chunk = await asyncio.wait_for(chunk_queue.get(), timeout=15.0)
-                        if mulaw_chunk is None:
-                            # End of this sentence's synthesis; stamp TTS end for the timed turn.
-                            if current_timing is not None and current_timing.get("t_tts_end") is None:
-                                current_timing["t_tts_end"] = time.perf_counter()
-                            break
+                while True:
+                    raw = await asyncio.wait_for(eleven_ws.recv(), timeout=15.0)
+                    msg = json.loads(raw)
+                    cid = msg.get("contextId") or msg.get("context_id")
+                    if cid is not None and cid != ctx:
+                        continue  # in-flight frame of an abandoned context
+                    chunk = base64.b64decode(msg["audio"]) if msg.get("audio") else b""
+                    if chunk:
                         if not is_speaking:
                             break
                         if current_timing is not None and current_timing.get("t2") is None:
                             current_timing["t2"] = time.perf_counter()
-                        buf += mulaw_chunk
+                        buf += chunk
                         while len(buf) >= FRAME:
                             if not is_speaking:
                                 break
                             await _send_frame(buf[:FRAME])
                             buf = buf[FRAME:]
-                    if is_speaking and buf:
-                        await _send_frame(buf)
-                finally:
-                    await generate_future  # attendi che il thread termini
+                    if msg.get("isFinal") or msg.get("is_final"):
+                        # End of this sentence's synthesis; stamp TTS end for the timed turn.
+                        if current_timing is not None and current_timing.get("t_tts_end") is None:
+                            current_timing["t_tts_end"] = time.perf_counter()
+                        break
+                if is_speaking and buf:
+                    await _send_frame(buf)
 
             except Exception as exc:
                 print(f"[TTS] errore: {exc}")
+                # A failed send/read leaves the socket in an unknown state;
+                # drop it so the next sentence starts from a clean connection.
+                try:
+                    if eleven_ws is not None:
+                        await eleven_ws.close()
+                except Exception:
+                    pass
+                eleven_ws = None
             finally:
                 is_speaking = False
+
+        if eleven_ws is not None:
+            try:
+                await eleven_ws.send(json.dumps({"close_socket": True}))
+                await eleven_ws.close()
+            except Exception:
+                pass
 
     dg_task = asyncio.create_task(deepgram_sender())
     llm_task = asyncio.create_task(llm_worker())

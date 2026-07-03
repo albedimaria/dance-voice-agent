@@ -6,4 +6,9 @@ supabase==2.10.0
 twilio==9.3.6
 deepgram-sdk==3.7.7
 openai==1.57.0
+# elevenlabs SDK: used by evals/tts_bench.py (the app talks to the TTS
+# WebSocket directly via `websockets`).
 elevenlabs==1.54.0
+# TTS multi-context WebSocket client (also a uvicorn[standard] extra; declared
+# explicitly because main.py imports it directly).
+websockets>=13,<15

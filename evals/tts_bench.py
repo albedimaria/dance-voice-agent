@@ -6,12 +6,16 @@ started talking") and total synthesis time, for the same fixed sentences.
 
 Configs compared:
   A) legacy    : eleven_v3       + pcm_24000  (needs 24k->8k resample + lin2ulaw)
-  B) production: eleven_flash_v2_5 + ulaw_8000 (Twilio-native, no resample)
+  B) HTTP      : eleven_flash_v2_5 + ulaw_8000 (Twilio-native, no resample)
+  C) production: same as B, over the multi-context WebSocket with auto_mode
+     (one warm connection, one context per sentence — mirrors main.py)
 
 Run from the repo root:  python -m evals.tts_bench
 Cost: ~N_REPS * len(SENTENCES) * ~chars per config — a few hundred chars total.
 """
 
+import asyncio
+import base64
 import json
 import os
 import statistics
@@ -25,6 +29,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from elevenlabs.client import ElevenLabs
+from websockets.asyncio.client import connect as ws_connect
 
 eleven = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
 VOICE_ID = os.environ["ELEVENLABS_VOICE_ID"]
@@ -66,6 +71,52 @@ def bench_once(text: str, model_id: str, output_format: str) -> dict:
     }
 
 
+async def bench_ws() -> list[dict]:
+    """Warm multi-context WebSocket with auto_mode — the production path."""
+    url = (
+        f"wss://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}/multi-stream-input"
+        f"?model_id=eleven_flash_v2_5&output_format=ulaw_8000"
+        f"&auto_mode=true&language_code={LANGUAGE}"
+    )
+    runs: list[dict] = []
+    async with ws_connect(
+        url,
+        additional_headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]},
+        open_timeout=10.0,
+    ) as ws:
+        ctx = 0
+        for rep in range(N_REPS):
+            for sentence in SENTENCES:
+                ctx += 1
+                cid = f"b{ctx}"
+                t0 = time.perf_counter()
+                await ws.send(json.dumps({"text": sentence + " ", "context_id": cid}))
+                await ws.send(json.dumps({"context_id": cid, "close_context": True}))
+                ttfb = None
+                total_bytes = 0
+                while True:
+                    msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=15.0))
+                    got = msg.get("contextId") or msg.get("context_id")
+                    if got is not None and got != cid:
+                        continue
+                    if msg.get("audio"):
+                        if ttfb is None:
+                            ttfb = (time.perf_counter() - t0) * 1000
+                        total_bytes += len(base64.b64decode(msg["audio"]))
+                    if msg.get("isFinal") or msg.get("is_final"):
+                        break
+                r = {
+                    "ttfb_ms": round(ttfb or -1, 1),
+                    "total_ms": round((time.perf_counter() - t0) * 1000, 1),
+                    "bytes": total_bytes,
+                    "chars": len(sentence),
+                }
+                runs.append(r)
+                print(f"[flash_ws_automode] rep{rep} ttfb={r['ttfb_ms']}ms total={r['total_ms']}ms bytes={r['bytes']}")
+        await ws.send(json.dumps({"close_socket": True}))
+    return runs
+
+
 def main() -> None:
     results: dict[str, list[dict]] = {name: [] for name in CONFIGS}
     for name, cfg in CONFIGS.items():
@@ -74,6 +125,7 @@ def main() -> None:
                 r = bench_once(sentence, **cfg)
                 results[name].append(r)
                 print(f"[{name}] rep{rep} ttfb={r['ttfb_ms']}ms total={r['total_ms']}ms bytes={r['bytes']}")
+    results["flash_ws_automode"] = asyncio.run(bench_ws())
 
     print("\n=== summary (median over runs) ===")
     summary = {}

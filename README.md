@@ -43,7 +43,7 @@ FastAPI WebSocket handler
     │        ├── create_trial_session ──► Supabase
     │        └── get_pricing          ──► (pure function, no I/O)
     │
-    └──► ElevenLabs TTS (eleven_flash_v2_5)
+    └──► ElevenLabs TTS (eleven_flash_v2_5, persistent WebSocket + auto_mode)
              │  mulaw 8kHz streamed chunks (ulaw_8000, Twilio-native)
              │  160-byte frames (20ms mulaw)
              ▼
@@ -73,7 +73,10 @@ Deepgram is subscribed to both `SpeechStarted` (VAD) and `Transcript` events, bu
 When that interim transcript arrives with `is_speaking = True`: the TTS stream is abandoned mid-chunk, the `tts_queue` is drained, and a `{"event": "clear"}` message is sent to Twilio to flush the audio buffer on the caller's end. The `is_speaking` flag is checked at every 160-byte frame boundary in `tts_sender`, so once triggered the interruption is near-immediate (~20ms). A 0.8s cooldown after a barge-in prevents the tail of the agent's own audio, or the caller's continuing speech, from being mis-interpreted as a second interruption.
 
 **Twilio-native TTS output (no conversion step)**
-TTS is requested as `ulaw_8000` — mulaw at 8kHz, exactly what Twilio Media Streams expects — so chunks flow from ElevenLabs to Twilio with no resampling and no format conversion. Output is buffered and flushed in exact 160-byte frames to maintain mulaw frame alignment on the Twilio side. (Earlier versions requested PCM 24kHz and downsampled with `audioop`, which was removed from the stdlib in Python 3.13; requesting the native format deleted that entire failure mode and ~80% of the TTS bandwidth. Model choice follows the same telephony logic: `eleven_flash_v2_5` — ~75ms model latency, half the cost/char — because an 8kHz phone line physically cannot carry the extra fidelity of the expressive `eleven_v3`. Measured with `evals/tts_bench.py`: median TTFB 385ms → 139ms, total synthesis 1343ms → 244ms.)
+TTS is requested as `ulaw_8000` — mulaw at 8kHz, exactly what Twilio Media Streams expects — so chunks flow from ElevenLabs to Twilio with no resampling and no format conversion. Output is buffered and flushed in exact 160-byte frames to maintain mulaw frame alignment on the Twilio side. (Earlier versions requested PCM 24kHz and downsampled with `audioop`, which was removed from the stdlib in Python 3.13; requesting the native format deleted that entire failure mode and ~80% of the TTS bandwidth. Model choice follows the same telephony logic: `eleven_flash_v2_5` — ~75ms model latency, half the cost/char — because an 8kHz phone line physically cannot carry the extra fidelity of the expressive `eleven_v3`.)
+
+**Persistent TTS WebSocket with per-sentence contexts**
+Synthesis runs over one ElevenLabs multi-context WebSocket per call, opened when the call starts and kept warm across turns, with `auto_mode` triggering generation the moment a sentence's context closes (the deprecated `optimize_streaming_latency` knob is gone). Each sentence gets its own context id, which is what makes barge-in clean: interrupting abandons the current context, and any frames still in flight are filtered out by id instead of leaking into the next response. The socket is re-established lazily if ElevenLabs drops it during a long silence, and the switch to a native-async client also removed the old sync-generator-in-a-thread bridge. Measured with `evals/tts_bench.py` (median, n=6): TTFB 294ms → 137ms and total synthesis 1042ms → 209ms vs the legacy HTTP `eleven_v3` config — with per-request jitter that the warm connection almost eliminates (125–149ms spread).
 
 **Stateless HMAC tokens for WebSocket auth**
 Twilio's `<Stream>` injects parameters into the WebSocket `start` event. The server mints a short-lived HMAC token (30s TTL) on each `/incoming-call` request, passes it as a stream parameter, and verifies it on `start`. This prevents arbitrary WebSocket connections to `/media-stream` without requiring session storage — safe across multiple workers.
@@ -242,7 +245,7 @@ Currently used: `trial_week_active` (`"true"` / `"false"`).
    └── If text response:
        └── Splits on sentence boundaries → streams sentences to tts_queue
 8. tts_sender dequeues sentences
-   └── Calls ElevenLabs TTS (mulaw 8kHz stream via ulaw_8000, in thread executor)
+   └── Streams the sentence over the persistent ElevenLabs WebSocket (one context per sentence, auto_mode, ulaw_8000)
    └── Sends 160-byte mulaw frames to Twilio media
 9. Twilio sends "stop" event (caller hangs up)
 10. Server tears down: cancels Deepgram, drains queues, awaits tasks

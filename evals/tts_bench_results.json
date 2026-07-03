@@ -1,90 +1,133 @@
 {
   "summary": {
     "legacy_v3_pcm24k": {
-      "median_ttfb_ms": 384.85,
-      "median_total_ms": 1343.35,
+      "median_ttfb_ms": 293.6,
+      "median_total_ms": 1042.3000000000002,
       "runs": 6
     },
     "flash_v2_5_ulaw8k": {
-      "median_ttfb_ms": 139.0,
-      "median_total_ms": 243.85000000000002,
+      "median_ttfb_ms": 359.0,
+      "median_total_ms": 471.75,
+      "runs": 6
+    },
+    "flash_ws_automode": {
+      "median_ttfb_ms": 137.0,
+      "median_total_ms": 209.15,
       "runs": 6
     }
   },
   "runs": {
     "legacy_v3_pcm24k": [
       {
-        "ttfb_ms": 2625.5,
-        "total_ms": 3622.7,
-        "bytes": 207360,
-        "chars": 74
-      },
-      {
-        "ttfb_ms": 457.2,
-        "total_ms": 1561.7,
-        "bytes": 218880,
-        "chars": 85
-      },
-      {
-        "ttfb_ms": 253.5,
-        "total_ms": 1027.6,
-        "bytes": 203520,
-        "chars": 74
-      },
-      {
-        "ttfb_ms": 287.1,
-        "total_ms": 1323.8,
-        "bytes": 230400,
-        "chars": 85
-      },
-      {
-        "ttfb_ms": 312.5,
-        "total_ms": 1026.8,
+        "ttfb_ms": 515.6,
+        "total_ms": 1139.9,
         "bytes": 226560,
         "chars": 74
       },
       {
-        "ttfb_ms": 481.8,
-        "total_ms": 1362.9,
-        "bytes": 241920,
+        "ttfb_ms": 297.0,
+        "total_ms": 944.7,
+        "bytes": 234240,
+        "chars": 85
+      },
+      {
+        "ttfb_ms": 237.4,
+        "total_ms": 887.5,
+        "bytes": 215040,
+        "chars": 74
+      },
+      {
+        "ttfb_ms": 381.8,
+        "total_ms": 1219.0,
+        "bytes": 226560,
+        "chars": 85
+      },
+      {
+        "ttfb_ms": 235.9,
+        "total_ms": 898.2,
+        "bytes": 218880,
+        "chars": 74
+      },
+      {
+        "ttfb_ms": 290.2,
+        "total_ms": 1367.4,
+        "bytes": 230400,
         "chars": 85
       }
     ],
     "flash_v2_5_ulaw8k": [
       {
-        "ttfb_ms": 1586.1,
-        "total_ms": 1687.8,
-        "bytes": 37523,
+        "ttfb_ms": 308.7,
+        "total_ms": 409.8,
+        "bytes": 35294,
         "chars": 74
       },
       {
-        "ttfb_ms": 134.3,
-        "total_ms": 249.9,
-        "bytes": 35666,
+        "ttfb_ms": 409.3,
+        "total_ms": 533.7,
+        "bytes": 39010,
         "chars": 85
       },
       {
-        "ttfb_ms": 149.8,
-        "total_ms": 242.1,
-        "bytes": 32694,
+        "ttfb_ms": 499.9,
+        "total_ms": 594.1,
+        "bytes": 34923,
         "chars": 74
       },
       {
-        "ttfb_ms": 140.8,
-        "total_ms": 243.8,
-        "bytes": 39381,
+        "ttfb_ms": 510.6,
+        "total_ms": 586.0,
+        "bytes": 38266,
         "chars": 85
       },
       {
-        "ttfb_ms": 136.1,
-        "total_ms": 236.0,
-        "bytes": 34180,
+        "ttfb_ms": 142.3,
+        "total_ms": 245.4,
+        "bytes": 36780,
         "chars": 74
       },
       {
-        "ttfb_ms": 137.2,
-        "total_ms": 243.9,
-        "bytes": 37895,
+        "ttfb_ms": 144.9,
+        "total_ms": 253.7,
+        "bytes": 34551,
+        "chars": 85
+      }
+    ],
+    "flash_ws_automode": [
+      {
+        "ttfb_ms": 137.3,
+        "total_ms": 208.9,
+        "bytes": 32442,
+        "chars": 74
+      },
+      {
+        "ttfb_ms": 127.7,
+        "total_ms": 209.4,
+        "bytes": 34845,
+        "chars": 85
+      },
+      {
+        "ttfb_ms": 125.3,
+        "total_ms": 208.3,
+        "bytes": 34845,
+        "chars": 74
+      },
+      {
+        "ttfb_ms": 142.8,
+        "total_ms": 231.5,
+        "bytes": 37185,
+        "chars": 85
+      },
+      {
+        "ttfb_ms": 136.7,
+        "total_ms": 207.5,
+        "bytes": 30038,
+        "chars": 74
+      },
+      {
+        "ttfb_ms": 149.2,
+        "total_ms": 228.6,
+        "bytes": 39651,
         "chars": 85
       }
     ]
