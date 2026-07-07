@@ -408,15 +408,20 @@ output: there is no resample step anymore, so the `audioop-lts` backport was dro
 
 **What's production-ready**
 - Full call lifecycle with barge-in, concurrent task architecture, and graceful teardown
+- Agent-initiated hangup: the agent ends the call itself via `end_call`, and an inactivity watchdog closes a silent line after 12s so the caller is never left on an open, mute connection
+- Call-length hard cap (10 min) as a cost / abuse guard
+- API-failure resilience: an OpenAI/ElevenLabs error mid-call no longer drops the caller into silence — the agent speaks a short courtesy line and pings the secretary once per call so a human can follow up
 - Server-side business rule enforcement (recovery levels, capacity) independent of LLM behaviour
 - HMAC WebSocket auth prevents unauthenticated connections to the media endpoint
 - Twilio signature validation on every inbound webhook
 - DB-level capacity constraints as a safety net behind the application-level checks
 - Structured call logging derived from tool calls (not LLM text)
+- Agent identity (name) and client-specific copy kept out of source via env vars
 
 **What would need work before a real client**
 - LLM history is per-connection, in-memory — no persistence across calls, no call continuity if the process restarts mid-call
 - The Supabase keepalive assumes a single process; a multi-worker deployment should use a dedicated scheduler
-- Error recovery is basic: a failed tool call logs the error and returns a user-facing message, but there's no retry or circuit-breaker logic
-- No admin UI — course schedule and settings are managed directly in Supabase
-- No test suite; the pipeline is exercised manually via live calls
+- No retry / circuit-breaker on the LLM/TTS calls yet — the failure path degrades gracefully (courtesy line + secretary ping) but does not attempt automatic recovery
+- No external uptime alerting (an UptimeRobot ping on `/health` is the intended 2-minute add)
+- No admin UI — course schedule, FAQ and settings are managed directly in Supabase
+- No automated test suite for the audio pipeline; the decision layer is covered by the eval suite, the pipeline is exercised via live calls

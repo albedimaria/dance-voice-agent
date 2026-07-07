@@ -170,6 +170,7 @@ async def media_stream(websocket: WebSocket) -> None:
     last_activity: float = time.time()
     hangup_requested: bool = False
     INACTIVITY_TIMEOUT: float = 12.0  # silence after the agent is done → auto hang up
+    MAX_CALL_DURATION: float = 600.0  # 10 min hard cap — cost/abuse guard
 
     async def _barge_in() -> None:
         nonlocal is_speaking, last_barge_in_time, barge_in_count
@@ -251,6 +252,16 @@ async def media_stream(websocket: WebSocket) -> None:
         # say a short goodbye and hang up.
         while not hangup_requested:
             await asyncio.sleep(1.0)
+            # Hard cap on total call length: bounds cost and blocks a stuck/abusive
+            # line from running forever. Wait for a natural gap so we don't clip.
+            if (time.time() - call_start > MAX_CALL_DURATION
+                    and not is_speaking and tts_queue.empty()):
+                await tts_queue.put({
+                    "text": "Devo salutarti, la chiamata è durata parecchio. Se ti serve altro richiamaci pure. A presto!",
+                    "timing": None,
+                })
+                await _hangup("durata massima")
+                return
             idle = time.time() - last_activity
             if (idle > INACTIVITY_TIMEOUT and not is_speaking
                     and not llm_busy and tts_queue.empty()):
@@ -323,6 +334,7 @@ async def media_stream(websocket: WebSocket) -> None:
         nonlocal llm_busy
 
         sentence_re = re.compile(r'(?<=[.!?])\s+')
+        error_notified = False  # ping the secretary at most once per call on API errors
 
         # Per-turn latency timing, threaded to the TTS worker via the first sentence.
         turn_timing: dict | None = None
@@ -533,6 +545,24 @@ async def media_stream(websocket: WebSocket) -> None:
             except Exception:
                 print(f"[LLM] errore:\n{traceback.format_exc()}")
                 history.pop()
+                # Never leave the caller in silence on an API failure (OpenAI /
+                # ElevenLabs timeout, etc.): say a short courtesy line, and once
+                # per call ping the secretary so a human can follow up.
+                try:
+                    await emit_tts("Scusa, ho avuto un intoppo tecnico. Puoi ripetere?")
+                except Exception:
+                    pass
+                if not error_notified:
+                    error_notified = True
+                    asyncio.create_task(notify_secretary(
+                        message=(
+                            f"Problema tecnico durante la chiamata da "
+                            f"{caller_phone or 'numero sconosciuto'} (errore API). "
+                            f"Potrebbe servire richiamare il chiamante."
+                        ),
+                        caller_phone=caller_phone,
+                        twilio_client=twilio,
+                    ))
             finally:
                 llm_busy = False
 
