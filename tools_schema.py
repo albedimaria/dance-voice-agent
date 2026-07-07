@@ -214,6 +214,87 @@ OPENAI_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "get_student_bookings",
+            "description": (
+                "Elenca le prenotazioni future confermate di uno studente (lezioni regolari e recuperi), "
+                "con nome corso, data, ora e sede. Chiamalo SEMPRE prima di annullare o spostare una "
+                "prenotazione, per trovare il booking_id giusto."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "student_id": {
+                        "type": "string",
+                        "description": "UUID dello studente.",
+                    },
+                },
+                "required": ["student_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_booking",
+            "description": (
+                "Annulla una prenotazione confermata (lezione regolare o recupero). "
+                "Chiama SOLO dopo aver confermato ad alta voce con il chiamante QUALE lezione annullare. "
+                "Per spostare una lezione: prima cancel_booking, poi create_booking sulla nuova data."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "booking_id": {
+                        "type": "string",
+                        "description": "UUID della prenotazione (da get_student_bookings).",
+                    },
+                    "student_id": {
+                        "type": "string",
+                        "description": "UUID dello studente proprietario della prenotazione.",
+                    },
+                },
+                "required": ["booking_id", "student_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_faq",
+            "description": (
+                "Recupera le FAQ della scuola (orari segreteria, parcheggio, pagamenti, lezioni private, "
+                "abbigliamento, età minima, eventi, partner). Chiamalo PRIMA di dire 'non ho questa "
+                "informazione' su domande pratiche fuori dai corsi."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "Argomento opzionale per filtrare (es. 'parcheggio'). Ometti per avere tutte le FAQ.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "transfer_to_secretary",
+            "description": (
+                "Trasferisce la telefonata IN DIRETTA alla segreteria (una persona vera). "
+                "Usalo quando il chiamante è agitato, chiede esplicitamente di parlare con una persona, "
+                "o il problema è troppo complesso. Prima di chiamarlo dì una frase breve tipo "
+                "'Ti metto in contatto con la segreteria, un attimo'. "
+                "Diverso da notify_secretary (che manda solo un messaggio): questo passa la chiamata ORA."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "end_call",
             "description": (
                 "Chiude la telefonata. Chiamalo SOLO quando la conversazione è davvero conclusa "

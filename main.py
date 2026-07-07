@@ -29,7 +29,21 @@ from websockets.asyncio.client import connect as ws_connect
 from prompt import SYSTEM_PROMPT
 from pricing import call_cost_usd
 from tools_schema import OPENAI_TOOLS
-from tools.supabase_tools import get_student_by_phone, get_courses, create_booking, create_recovery, notify_secretary, get_settings, check_trial_used, create_trial_session, get_pricing
+from tools.supabase_tools import (
+    cancel_booking,
+    check_trial_used,
+    create_booking,
+    create_recovery,
+    create_trial_session,
+    get_courses,
+    get_faq,
+    get_pricing,
+    get_settings,
+    get_student_bookings,
+    get_student_by_phone,
+    notify_secretary,
+    send_booking_confirmation_sms,
+)
 
 supabase: Client = create_client(
     os.environ["SUPABASE_URL"],
@@ -199,6 +213,38 @@ async def media_stream(websocket: WebSocket) -> None:
         except Exception:
             pass
 
+    async def _transfer() -> None:
+        # Live handoff: redirect the PSTN leg to the secretary's phone. Once
+        # Twilio executes the new TwiML the media stream stops and our normal
+        # teardown (log + traces) runs. hangup_requested also parks the
+        # inactivity watchdog so it can't talk over the transfer.
+        nonlocal hangup_requested
+        if hangup_requested:
+            return
+        hangup_requested = True
+        await asyncio.sleep(0.8)  # let the "ti passo la segreteria" line start
+        for _ in range(150):      # wait for the agent to finish speaking (~15s cap)
+            if not is_speaking and tts_queue.empty():
+                break
+            await asyncio.sleep(0.1)
+        await asyncio.sleep(0.4)
+        secretary = os.environ.get("SECRETARY_PHONE", "")
+        print(f"[transfer] passo la chiamata alla segreteria ({secretary})")
+        twiml = (
+            "<Response>"
+            f'<Dial timeout="25">{secretary}</Dial>'
+            '<Say language="it-IT">La segreteria non risponde al momento. '
+            "Riprova più tardi o scrivici su WhatsApp. A presto!</Say>"
+            "</Response>"
+        )
+        if call_sid:
+            try:
+                await asyncio.to_thread(
+                    lambda: twilio.calls(call_sid).update(twiml=twiml)
+                )
+            except Exception as exc:
+                print(f"[transfer] errore Twilio: {exc}")
+
     async def inactivity_watchdog() -> None:
         # Fix for "caller goes silent and the call stays open forever": once the
         # agent is idle and there's been no user input for INACTIVITY_TIMEOUT,
@@ -307,16 +353,49 @@ async def media_stream(websocket: WebSocket) -> None:
                 result = await get_courses(supabase, **args)
             elif fn == "create_booking":
                 result = await create_booking(supabase, **args)
+                if isinstance(result, dict) and "error" not in result:
+                    # Deterministic confirmation SMS — fire-and-forget, never
+                    # blocks the call or the LLM turn.
+                    asyncio.create_task(send_booking_confirmation_sms(
+                        supabase, twilio, caller_phone,
+                        args.get("course_id", ""), args.get("date", ""), "prenotazione",
+                    ))
             elif fn == "create_recovery":
                 result = await create_recovery(supabase, **args)
+                if isinstance(result, dict) and "error" not in result:
+                    asyncio.create_task(send_booking_confirmation_sms(
+                        supabase, twilio, caller_phone,
+                        args.get("course_id", ""), args.get("date", ""), "recupero",
+                    ))
+            elif fn == "get_student_bookings":
+                result = await get_student_bookings(supabase, **args)
+            elif fn == "cancel_booking":
+                result = await cancel_booking(supabase, **args)
+            elif fn == "get_faq":
+                result = await get_faq(supabase, **args)
             elif fn == "notify_secretary":
                 result = await notify_secretary(caller_phone=caller_phone, twilio_client=twilio, **args)
+            elif fn == "transfer_to_secretary":
+                if not os.environ.get("SECRETARY_PHONE"):
+                    result = {"error": (
+                        "Trasferimento diretto non disponibile al momento — "
+                        "avvisa la segreteria con notify_secretary e dillo al chiamante."
+                    )}
+                else:
+                    # Redirect happens after the agent finishes its handoff line.
+                    asyncio.create_task(_transfer())
+                    result = {"transferring": True}
             elif fn == "get_settings":
                 result = await get_settings(supabase)
             elif fn == "check_trial_used":
                 result = await check_trial_used(supabase, **args)
             elif fn == "create_trial_session":
                 result = await create_trial_session(supabase, **args)
+                if isinstance(result, dict) and "error" not in result:
+                    asyncio.create_task(send_booking_confirmation_sms(
+                        supabase, twilio, caller_phone,
+                        args.get("course_id", ""), args.get("date", ""), "lezione di prova",
+                    ))
             elif fn == "get_pricing":
                 result = get_pricing(**args)
             elif fn == "end_call":
@@ -689,24 +768,34 @@ async def media_stream(websocket: WebSocket) -> None:
         await tts_task
 
         def _derive_intent() -> str:
+            if "transfer_to_secretary" in tools_called:
+                return "trasferimento"
             if "notify_secretary" in tools_called:
                 return "escalation"
             if "create_booking" in tools_called:
                 return "prenotazione"
             if "create_recovery" in tools_called:
                 return "recupero"
+            if "cancel_booking" in tools_called:
+                return "disdetta"
+            if "get_faq" in tools_called:
+                return "faq"
             if "get_courses" in tools_called:
                 return "info_corsi"
             return "unknown"
 
         def _derive_outcome() -> str:
+            if "transfer_to_secretary" in tools_called:
+                return "trasferita alla segreteria"
             if "notify_secretary" in tools_called:
                 return "escalato alla segreteria"
             if "create_booking" in tools_called:
                 return "prenotazione_confermata"
             if "create_recovery" in tools_called:
                 return "recupero_confermato"
-            if "get_courses" in tools_called:
+            if "cancel_booking" in tools_called:
+                return "disdetta_confermata"
+            if "get_faq" in tools_called or "get_courses" in tools_called:
                 return "info_fornite"
             return "unknown"
 
@@ -719,7 +808,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 "phone_from": caller_phone or "unknown",
                 "intent_detected": _derive_intent(),
                 "outcome": _derive_outcome(),
-                "escalated": "notify_secretary" in tools_called,
+                "escalated": bool({"notify_secretary", "transfer_to_secretary"} & tools_called),
                 "duration_seconds": int(time.time() - call_start),
                 "avg_response_ms": _avg(latency_response_ms),
                 "avg_ttft_ms": _avg(latency_ttft_ms),

@@ -201,6 +201,153 @@ async def create_booking(
     return await asyncio.to_thread(_query)
 
 
+async def get_student_bookings(supabase: Client, student_id: str) -> list[dict]:
+    """Prenotazioni future confermate dello studente (regular + recovery),
+    con i dettagli del corso — serve all'agente per disdette e spostamenti."""
+
+    def _query():
+        result = (
+            supabase.table("bookings")
+            .select("id, date, type, courses(name, time_start, location)")
+            .eq("student_id", student_id)
+            .eq("status", "confirmed")
+            .gte("date", date_type.today().isoformat())
+            .order("date")
+            .execute()
+        )
+        rows = result.data or []
+        # Flatten the course join so the LLM sees one simple dict per booking.
+        out = []
+        for row in rows:
+            course = row.pop("courses", None) or {}
+            out.append({
+                "booking_id": row["id"],
+                "date": row["date"],
+                "type": row["type"],
+                "course_name": course.get("name"),
+                "time_start": course.get("time_start"),
+                "location": course.get("location"),
+            })
+        return out
+
+    return await asyncio.to_thread(_query)
+
+
+async def cancel_booking(supabase: Client, booking_id: str, student_id: str) -> dict:
+    """Annulla una prenotazione (status → cancelled). Solo prenotazioni proprie,
+    confermate e non passate — il posto torna disponibile grazie all'indice
+    parziale su status='confirmed'."""
+
+    def _query():
+        booking_result = (
+            supabase.table("bookings")
+            .select("id, date, status, student_id, courses(name)")
+            .eq("id", booking_id)
+            .maybe_single()
+            .execute()
+        )
+        booking = booking_result.data
+        if not booking:
+            return {"error": "Prenotazione non trovata."}
+        if booking["student_id"] != student_id:
+            return {"error": "Questa prenotazione non appartiene allo studente."}
+        if booking["status"] != "confirmed":
+            return {"error": "La prenotazione risulta già annullata."}
+        if booking["date"] < date_type.today().isoformat():
+            return {"error": "Non si può annullare una lezione già passata."}
+
+        # The extra status filter makes the update atomic: if a concurrent
+        # request cancelled it first, this touches 0 rows and stays idempotent.
+        supabase.table("bookings").update({"status": "cancelled"}) \
+            .eq("id", booking_id).eq("status", "confirmed").execute()
+        course = booking.get("courses") or {}
+        return {
+            "cancelled": True,
+            "course_name": course.get("name"),
+            "date": booking["date"],
+        }
+
+    return await asyncio.to_thread(_query)
+
+
+# FAQ cambiano raramente: stessa strategia di cache dei corsi.
+_faq_cache: tuple[list[dict], float] | None = None
+
+
+async def get_faq(supabase: Client, topic: str | None = None) -> list[dict]:
+    """Restituisce le FAQ attive della scuola. Senza filtro torna tutte le voci
+    (tabella piccola): è l'LLM a scegliere la risposta giusta, così le query
+    distorte dall'STT non rompono un keyword-match."""
+    global _faq_cache
+
+    def _query():
+        result = (
+            supabase.table("faqs")
+            .select("topic, question, answer")
+            .eq("active", True)
+            .execute()
+        )
+        return result.data or []
+
+    now = time.monotonic()
+    if _faq_cache is not None and now - _faq_cache[1] < _COURSES_CACHE_TTL:
+        rows = _faq_cache[0]
+    else:
+        rows = await asyncio.to_thread(_query)
+        _faq_cache = (rows, now)
+
+    if topic:
+        t = topic.lower().strip()
+        filtered = [r for r in rows if t in r["topic"].lower() or t in r["question"].lower()]
+        return filtered or rows  # match vuoto → torna tutto, decide l'LLM
+    return rows
+
+
+async def send_booking_confirmation_sms(
+    supabase: Client,
+    twilio_client: TwilioClient,
+    caller_phone: str,
+    course_id: str,
+    date: str,
+    kind: str,  # 'prenotazione' | 'recupero' | 'lezione di prova'
+) -> None:
+    """Conferma via SMS dopo una prenotazione riuscita. Deterministica (non
+    decisa dall'LLM) e fire-and-forget: un errore SMS non deve mai toccare la
+    chiamata in corso."""
+    sms_from = os.environ.get("TWILIO_PHONE_NUMBER", "")
+    if not sms_from or not caller_phone:
+        print("[sms] TWILIO_PHONE_NUMBER o numero chiamante mancanti — conferma saltata")
+        return
+
+    def _send():
+        course_result = (
+            supabase.table("courses")
+            .select("name, time_start, location")
+            .eq("id", course_id)
+            .maybe_single()
+            .execute()
+        )
+        course = course_result.data or {}
+        time_start = (course.get("time_start") or "")[:5]
+        body = (
+            f"Ritmo Caliente — {kind} confermata: "
+            f"{course.get('name', 'lezione')} il {date}"
+        )
+        if time_start:
+            body += f" alle {time_start}"
+        location = course.get("location")
+        if location:
+            body += f", Studio {location}"
+        body += ". A presto!"
+        twilio_client.messages.create(from_=sms_from, to=caller_phone, body=body)
+
+    try:
+        await asyncio.to_thread(_send)
+        print(f"[sms] conferma {kind} inviata a {caller_phone}")
+    except Exception as exc:
+        print(f"[sms] invio conferma fallito (non bloccante): {exc}")
+
+
 async def notify_secretary(message: str, caller_phone: str, twilio_client: TwilioClient) -> dict:
     def _send():
         try:

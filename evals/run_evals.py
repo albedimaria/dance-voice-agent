@@ -35,6 +35,7 @@ from tools_schema import OPENAI_TOOLS
 from tools.supabase_tools import (
     check_trial_used,
     get_courses,
+    get_faq,
     get_pricing,
     get_settings,
 )
@@ -72,10 +73,23 @@ async def _create(messages: list[dict]):
 
 # Read-only tools run for real against Supabase; everything else is a side effect
 # we intercept (record the decision, return a simulated success) to keep runs pure.
-READ_ONLY_TOOLS = {"get_courses", "get_pricing", "get_settings", "check_trial_used"}
+READ_ONLY_TOOLS = {"get_courses", "get_pricing", "get_settings", "check_trial_used", "get_faq"}
+
+# get_student_bookings is a read, but it depends on mutable booking state — a
+# canned fixture keeps the cancel scenario reproducible regardless of the DB.
+_BOOKINGS_FIXTURE = [
+    {
+        "booking_id": "c1000000-0000-0000-0000-000000000001",
+        "date": "2026-07-15",
+        "type": "regular",
+        "course_name": "Bachata Sensual Base",
+        "time_start": "19:00:00",
+        "location": "AIDA",
+    }
+]
 
 
-async def _dispatch(fn: str, args: dict, writes: list[str]) -> dict:
+async def _dispatch(fn: str, args: dict, writes: list[str]) -> dict | list:
     if fn == "get_courses":
         return await get_courses(supabase, **args)
     if fn == "get_pricing":
@@ -84,6 +98,10 @@ async def _dispatch(fn: str, args: dict, writes: list[str]) -> dict:
         return await get_settings(supabase)
     if fn == "check_trial_used":
         return await check_trial_used(supabase, **args)
+    if fn == "get_faq":
+        return await get_faq(supabase, **args)
+    if fn == "get_student_bookings":
+        return _BOOKINGS_FIXTURE
     # Write / side-effect tools: record and simulate success, no persistence.
     writes.append(fn)
     return {"ok": True, "_stubbed_for_eval": True}

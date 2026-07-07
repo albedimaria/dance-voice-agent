@@ -12,3 +12,6 @@ elevenlabs==1.54.0
 # TTS multi-context WebSocket client (also a uvicorn[standard] extra; declared
 # explicitly because main.py imports it directly).
 websockets>=13,<15
+# IANA timezone database for zoneinfo on Windows (scripts/send_reminders.py
+# computes "tomorrow" in Europe/Rome); no-op on Linux which has system tzdata.
+tzdata; platform_system == "Windows"

@@ -33,15 +33,20 @@ FastAPI WebSocket handler
     │
     ├──► GPT-4o (agentic loop)
     │        │  tool calls
-    │        ├── get_student_by_phone ──► Supabase
-    │        ├── get_courses          ──► Supabase  (TTL-cached, +day filter)
-    │        ├── create_booking       ──► Supabase
-    │        ├── create_recovery      ──► Supabase
-    │        ├── notify_secretary     ──► Twilio WhatsApp API
-    │        ├── get_settings         ──► Supabase
-    │        ├── check_trial_used     ──► Supabase
-    │        ├── create_trial_session ──► Supabase
-    │        └── get_pricing          ──► (pure function, no I/O)
+    │        ├── get_student_by_phone  ──► Supabase
+    │        ├── get_courses           ──► Supabase  (TTL-cached, +day filter)
+    │        ├── create_booking        ──► Supabase  (+ confirmation SMS)
+    │        ├── create_recovery       ──► Supabase  (+ confirmation SMS)
+    │        ├── get_student_bookings  ──► Supabase
+    │        ├── cancel_booking        ──► Supabase
+    │        ├── get_faq               ──► Supabase  (TTL-cached)
+    │        ├── notify_secretary      ──► Twilio WhatsApp API
+    │        ├── transfer_to_secretary ──► Twilio REST (live <Dial> handoff)
+    │        ├── end_call              ──► Twilio REST (agent-initiated hangup)
+    │        ├── get_settings          ──► Supabase
+    │        ├── check_trial_used      ──► Supabase
+    │        ├── create_trial_session  ──► Supabase  (+ confirmation SMS)
+    │        └── get_pricing           ──► (pure function, no I/O)
     │
     └──► ElevenLabs TTS (eleven_flash_v2_5, persistent WebSocket + auto_mode)
              │  mulaw 8kHz streamed chunks (ulaw_8000, Twilio-native)
@@ -123,6 +128,21 @@ Both the level check and the capacity check happen in a single DB session to avo
 **`notify_secretary`**
 Sends a WhatsApp message via Twilio to the school's secretary number when the agent cannot resolve a request (complaints, payments, out-of-scope queries). Includes caller phone and a description. Uses `asyncio.to_thread` to wrap the synchronous Twilio client.
 
+**`get_student_bookings` / `cancel_booking`**
+Cancellation and rescheduling. The agent first lists the student's upcoming confirmed bookings (with course name, time, location — flattened from a join so the LLM sees one simple dict per booking), confirms aloud *which* lesson to cancel, then flips `status` to `cancelled`. Ownership, status and date are re-verified server-side, so the LLM can never cancel someone else's or a past booking. The partial unique index on `status = 'confirmed'` means the freed spot is immediately re-bookable. Rescheduling is composed: `cancel_booking` + a normal `create_booking` on the new date.
+
+**`get_faq`**
+Small curated FAQ table (secretary hours, parking, payments, private lessons, dress code, events…). The tool returns all active rows (TTL-cached) and the LLM picks the relevant answer itself — deliberately *not* keyword search, so STT-garbled queries can't miss. Raises the contain rate: practical questions no longer escalate to the secretary.
+
+**`transfer_to_secretary`**
+Live human handoff. The agent speaks a short handoff line, waits for the TTS queue to drain, then rewrites the live call's TwiML via the Twilio REST API with a `<Dial>` to the secretary's phone. If the secretary doesn't answer within 25s, a fallback `<Say>` closes the call gracefully. Distinct from `notify_secretary` (async message): this transfers the caller *now*. If `SECRETARY_PHONE` isn't configured the tool returns an error and the prompt instructs the agent to fall back to `notify_secretary`.
+
+**Confirmation SMS (deterministic, not LLM-driven)**
+Every successful `create_booking` / `create_recovery` / `create_trial_session` fires a confirmation SMS to the caller with course, date, time and location. It runs as a fire-and-forget task from the tool dispatcher — an SMS failure can never affect the live call — and it's server-side logic, not a tool the LLM may forget to call.
+
+**Pre-lesson reminders (cron)**
+`scripts/send_reminders.py` runs daily from GitHub Actions (independent of the Render server, so a spin-down can't skip a day): finds tomorrow's confirmed bookings and trial sessions and texts each student. Idempotency is enforced at the DB level — the script *claims* each reminder by inserting into `reminders_log` (UNIQUE on `kind, booking_id`) before sending, so re-runs never double-text.
+
 **`get_pricing`** (pure function, no I/O)
 Calculates subscription cost: first course €160, each additional at €128 (−20%). Returns total, per-course breakdown, and a human-readable note. No DB call, no side effects.
 
@@ -133,7 +153,7 @@ Support the trial week feature: a `settings` table flag enables free participati
 
 ## Database Schema
 
-Six tables in Supabase PostgreSQL (eu-west-1). RLS is enabled on all tables; the server uses the service role key.
+Core business tables in Supabase PostgreSQL (eu-west-1) — plus the observability tables (`turn_metrics`, `call_traces`, `eval_runs`, `eval_results`, see [Evals & Observability](#evals--observability)) and two support tables: `faqs` (curated FAQ entries served by `get_faq`) and `reminders_log` (idempotency guard for the reminder cron). RLS is enabled on all tables; the server uses the service role key.
 
 ### `students`
 | Column | Type | Notes |
@@ -184,7 +204,7 @@ DB-level constraint: unique confirmed booking per (student, course, date); capac
 | phone_from | text | |
 | intent_detected | text | derived from tool call set |
 | outcome | text | derived from tool call set |
-| escalated | boolean | true if `notify_secretary` was called |
+| escalated | boolean | true if `notify_secretary` or `transfer_to_secretary` was called |
 | duration_seconds | int | |
 | created_at | timestamptz | |
 
@@ -263,6 +283,7 @@ Currently used: `trial_week_active` (`"true"` / `"false"`).
 | `TWILIO_PHONE_NUMBER` | Inbound phone number in E.164 |
 | `TWILIO_WHATSAPP_FROM` | WhatsApp-enabled Twilio number for secretary notifications |
 | `SECRETARY_WHATSAPP` | Secretary's WhatsApp number (E.164) |
+| `SECRETARY_PHONE` | Secretary's phone for live call transfer (`transfer_to_secretary`); optional — without it the agent falls back to `notify_secretary` |
 | `DEEPGRAM_API_KEY` | Deepgram API key (Nova-2 streaming) |
 | `OPENAI_API_KEY` | OpenAI API key (GPT-4o) |
 | `ELEVENLABS_API_KEY` | ElevenLabs API key (TTS, eleven_flash_v2_5) |

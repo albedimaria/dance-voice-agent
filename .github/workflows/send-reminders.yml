@@ -1,0 +1,35 @@
+# Pre-lesson SMS reminders — daily cron, independent of the Render server.
+# Runs at 17:00 UTC (18:00/19:00 Italy) so students get tomorrow's reminder
+# the evening before. Secrets to configure in the repo settings:
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+#   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+
+name: Send lesson reminders
+
+on:
+  schedule:
+    - cron: "0 17 * * *"
+  workflow_dispatch: {} # manual run for testing
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install supabase twilio python-dotenv tzdata
+
+      - name: Send reminders
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
+        run: python -m scripts.send_reminders
