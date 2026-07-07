@@ -152,6 +152,10 @@ async def media_stream(websocket: WebSocket) -> None:
     barge_in_count: int = 0
     last_barge_in_time: float = 0.0
     BARGE_IN_COOLDOWN: float = 0.8
+    call_sid: str = ""
+    last_activity: float = time.time()
+    hangup_requested: bool = False
+    INACTIVITY_TIMEOUT: float = 12.0  # silence after the agent is done → auto hang up
 
     async def _barge_in() -> None:
         nonlocal is_speaking, last_barge_in_time, barge_in_count
@@ -168,10 +172,54 @@ async def media_stream(websocket: WebSocket) -> None:
         }))
         print("[barge-in] TTS interrotto")
 
+    async def _hangup(reason: str) -> None:
+        # End the phone call from the agent side (so the caller doesn't have to).
+        # Ending the Twilio call is what actually hangs up the PSTN leg; closing
+        # only the WebSocket would leave the call open and silent.
+        nonlocal hangup_requested
+        if hangup_requested:
+            return
+        hangup_requested = True
+        await asyncio.sleep(0.8)  # let a closing line start generating
+        for _ in range(150):      # wait for the agent to finish speaking (~15s cap)
+            if not is_speaking and tts_queue.empty():
+                break
+            await asyncio.sleep(0.1)
+        await asyncio.sleep(0.4)  # grace so the last audio frame isn't clipped
+        print(f"[hangup] chiusura chiamata dall'agente ({reason})")
+        if call_sid:
+            try:
+                await asyncio.to_thread(
+                    lambda: twilio.calls(call_sid).update(status="completed")
+                )
+            except Exception as exc:
+                print(f"[hangup] errore Twilio: {exc}")
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
+    async def inactivity_watchdog() -> None:
+        # Fix for "caller goes silent and the call stays open forever": once the
+        # agent is idle and there's been no user input for INACTIVITY_TIMEOUT,
+        # say a short goodbye and hang up.
+        while not hangup_requested:
+            await asyncio.sleep(1.0)
+            idle = time.time() - last_activity
+            if (idle > INACTIVITY_TIMEOUT and not is_speaking
+                    and not llm_busy and tts_queue.empty()):
+                await tts_queue.put({
+                    "text": "Va bene, se non ti serve altro ti saluto. A presto!",
+                    "timing": None,
+                })
+                await _hangup("inattività")
+                return
+
     async def on_speech_started(*args, **kwargs) -> None:
         print("[VAD] parlato rilevato")
 
     async def on_transcript(*args, **kwargs) -> None:
+        nonlocal last_activity
         try:
             result = kwargs.get("result")
             if result is None:
@@ -183,6 +231,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 print(f"[STT cooldown] ignorato: {transcript}")
                 return
             if result.is_final:
+                last_activity = time.time()
                 print(f"[STT FINAL] {transcript}")
                 while not llm_queue.empty():
                     try:
@@ -270,6 +319,11 @@ async def media_stream(websocket: WebSocket) -> None:
                 result = await create_trial_session(supabase, **args)
             elif fn == "get_pricing":
                 result = get_pricing(**args)
+            elif fn == "end_call":
+                # Agent decided the conversation is over; hang up after the
+                # closing line it produces in this same turn.
+                asyncio.create_task(_hangup("fine conversazione"))
+                result = {"ended": True}
             else:
                 result = {"error": f"tool {fn!r} non implementato"}
             print(f"[LLM] tool result ({fn}): {result}")
@@ -404,7 +458,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 llm_busy = False
 
     async def tts_sender() -> None:
-        nonlocal is_speaking
+        nonlocal is_speaking, last_activity
         FRAME = 160  # 20ms @ mulaw 8kHz
         current_timing: dict | None = None  # timing of the turn currently playing
 
@@ -545,6 +599,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 eleven_ws = None
             finally:
                 is_speaking = False
+                last_activity = time.time()  # agent finished talking → start silence clock
 
         if eleven_ws is not None:
             try:
@@ -556,6 +611,7 @@ async def media_stream(websocket: WebSocket) -> None:
     dg_task = asyncio.create_task(deepgram_sender())
     llm_task = asyncio.create_task(llm_worker())
     tts_task = asyncio.create_task(tts_sender())
+    watchdog_task = asyncio.create_task(inactivity_watchdog())
 
     try:
         while True:
@@ -573,6 +629,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 print("[twilio] connected")
             elif event == "start":
                 stream_sid = data["start"]["streamSid"]
+                call_sid = data["start"].get("callSid") or ""
                 custom_params = data["start"].get("customParameters", {})
                 caller_phone = custom_params.get("from", "")
                 ws_token = custom_params.get("token", "")
@@ -623,6 +680,7 @@ async def media_stream(websocket: WebSocket) -> None:
     except Exception as exc:
         print(f"[stream] errore ricezione: {exc}")
     finally:
+        watchdog_task.cancel()
         await audio_queue.put(None)
         await llm_queue.put(None)
         await tts_queue.put(None)

@@ -211,4 +211,16 @@ OPENAI_TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "end_call",
+            "description": (
+                "Chiude la telefonata. Chiamalo SOLO quando la conversazione è davvero conclusa "
+                "(il chiamante ha ottenuto ciò che voleva o ti ha salutato). Prima di chiamarlo, "
+                "dì una frase di saluto breve; poi la chiamata si chiude da sola."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
 ]
