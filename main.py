@@ -26,7 +26,7 @@ from openai import AsyncOpenAI
 
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 from websockets.asyncio.client import connect as ws_connect
-from prompt import SYSTEM_PROMPT
+from prompt import SYSTEM_PROMPT, AGENT_NAME_SPOKEN
 from pricing import call_cost_usd
 from tools_schema import OPENAI_TOOLS
 from tools.supabase_tools import (
@@ -748,7 +748,7 @@ async def media_stream(websocket: WebSocket) -> None:
                     print("[settings] settimana di prova attiva")
                 # AI-disclosure at first contact (EU AI Act Art. 50(1)): the caller
                 # is told up front they're talking to an automated system.
-                greeting = "Ciao! Sono TropicoCHETA, l'assistente vocale automatico di Ritmo Caliente. Come posso aiutarti?"
+                greeting = f"Ciao! Sono {AGENT_NAME_SPOKEN}, l'assistente vocale automatico di Ritmo Caliente. Come posso aiutarti?"
                 await tts_queue.put({"text": greeting, "timing": None})
                 history.append({"role": "assistant", "content": greeting})
             elif event == "stop":

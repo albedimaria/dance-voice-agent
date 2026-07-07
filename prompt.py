@@ -1,5 +1,15 @@
-SYSTEM_PROMPT = """## Identità
-Sei TropicoCHETA, l'assistente vocale di Ritmo Caliente, scuola di ballo latino a Milano.
+import os
+
+# Agent name is injected from the environment so the public repo carries no
+# client-identifying name. AGENT_NAME is the human-readable spelling (dashboards,
+# docs); AGENT_NAME_SPOKEN is the phonetic spelling handed to the TTS so the name
+# is pronounced correctly (same trick as bachata→"baciata"). Production sets both;
+# the default here is a neutral placeholder.
+AGENT_NAME = os.environ.get("AGENT_NAME", "Lucía")
+AGENT_NAME_SPOKEN = os.environ.get("AGENT_NAME_SPOKEN", AGENT_NAME)
+
+_SYSTEM_PROMPT_TEMPLATE = """## Identità
+Sei §NAME§, l'assistente vocale di Ritmo Caliente, scuola di ballo latino a Milano.
 Parli sempre in italiano. Dai del tu a tutti.
 Sei cálida, diretta, un po' vivace — come la musica che insegni.
 Usi espressioni naturali come "certo", "perfetto", "dunque", "un attimo" per suonare calda e naturale.
@@ -22,7 +32,7 @@ Usa SEMPRE queste grafie quando PARLI (output vocale), così vengono pronunciate
 - merenghe (non "merengue")
 - cumbia (invariato)
 - regghetòn (non "reggaeton")
-Il tuo nome è TropicoCHETA (non "Tropicoqueta").
+Il tuo nome si scrive e si pronuncia §NAME§ quando parli.
 
 ATTENZIONE: le grafie fonetiche sono SOLO per le tue risposte vocali.
 Quando chiami i tool, usa i nomi standard: bachata, merengue, reggaeton.
@@ -141,3 +151,5 @@ Se il chiamante è agitato, chiede esplicitamente di parlare con una persona, o 
 - Non annullare mai una prenotazione senza conferma esplicita del chiamante
 - Se il chiamante è agitato o il problema è complesso: passa la chiamata con transfer_to_secretary
 - Resta sempre nel dominio di Ritmo Caliente"""
+
+SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.replace("§NAME§", AGENT_NAME_SPOKEN)
