@@ -1,6 +1,36 @@
-<!-- last-check: 2026-07-03 -->
+<!-- last-check: 2026-07-08 -->
 # ElevenLabs — aggiornamenti & best practice per Dance Voice Agent
-_Ultimo check: 2026-07-03 · Stack: **TTS API diretta** (no Conversational AI platform) · Modello: `eleven_flash_v2_5` · output: `ulaw_8000` nativo Twilio via WS multi-context + `auto_mode` · Lingua: it/es/en dinamica_
+_Ultimo check: 2026-07-08 · Stack ATTUALE: **TTS API diretta** (pipeline custom Twilio+Deepgram+GPT-4o) · Modello: `eleven_flash_v2_5` · output: `ulaw_8000` nativo Twilio via WS multi-context + `auto_mode` · Lingua: it/es/en dinamica_
+
+## 2026-07-08 — Fattibilità migrazione → Conversational AI **full** (analisi, non implementazione)
+
+Valutata la migrazione dalla pipeline custom (solo-TTS) all'**agente ConvAI nativo**. Verifica su doc ufficiali + stato live via API (scaffold `tropicoqueta` esiste ma vuoto; Shy Order prova in produzione metà delle capability). **Nessun blocker.**
+
+| Capability (custom oggi) | ConvAI-full | Esito |
+|---|---|---|
+| Telefonia inbound | SIP trunking nativo (Zadarma/Telnyx/Plivo…) | ✅ · ⚠️ tier minimo per SIP **non documentato** → verificare |
+| Orchestratore GPT-4o | LLM nativo bundled (Gemini/GPT-4o/…) **o** custom-LLM endpoint OpenAI-compat | ✅ (live: Shy Order `gemini-2.5-flash`) |
+| Tool su Supabase | server tool webhook → **REST/Edge Functions Supabase diretto** (integrazione ufficiale) | ✅ — niente app server |
+| Flusso prenotazione deterministico | Workflows (condizioni deterministiche + LLM) | ✅ |
+| Eval | **Agent Tests** (Create test/Run tests) + Analisi/Success criteria (ora **scoring numerico**) | ✅ ⚠️ `simulate-conversation` **DEPRECATO 2026-07-06** → usare Agent Tests |
+| Transfer a persona / hangup | system tool `transfer-to-number` / `end_call` | ✅ (live: `end_call` su Shy Order) |
+| Memoria persistente | dynamic variables + conversation-initiation webhook | ✅ (pattern live Shy Order) |
+| AI-disclosure | `first_message` | ✅ (live) |
+| Ingestion → console | post-call webhook + **`cost_fiat` per-conversazione (USD)** | ✅ potenziato |
+| Notifiche WhatsApp proattive | NON EL → Meta API (Edge Function + pg_cron) | ✅ (canale-conversazione ≠ notifica) |
+
+**Architettura target:** `Agente EL ↔ Supabase (REST + Edge Functions/RPC + pg_cron + Edge Fn→Meta WhatsApp)`. Zero app server. Il repo custom resta **congelato** come riferimento.
+
+**Delta 2026-07-06 che toccano il piano:**
+- **`simulate-conversation` deprecato → Agent Tests** (Create test/Run tests) = nuovo eval E2E nativo; eval con **scoring numerico** (non solo binario).
+- **`cost_fiat`** (USD) nei metadata conversazione → costo reale per chiamata nativo (utile per la console).
+- **`interruption_mode` per-tool** (`disable_during_tool`) → il caller non interrompe durante `get_courses`/`create_booking`.
+
+**Costo:** ConvAI ~$0.08/min + LLM + telefonia; piano **Starter attuale insufficiente** per produzione → upgrade tier (dettaglio economico nel vault, non qui).
+
+---
+
+### Report precedente (2026-07-03) — stack TTS custom (tuttora valido per la versione congelata)
 
 > ✅ **2026-07-03 — le 3 raccomandazioni del check 2026-06-30 sono APPLICATE** su branch
 > `feat/elevenlabs-updates` (`7f5dd3e` = flash_v2_5 + ulaw_8000 · `a40c3be` = WS multi-context
@@ -35,6 +65,7 @@ Il modello in uso, **`eleven_v3`, NON è raccomandato per il realtime/telefonia*
 - Scribe v2 (STT), Music v2, video-to-music, nuovi default formati mp3 → modalità diverse / qui STT = Deepgram e output = μ-law per telefono.
 
 ## Changelog monitorato (delta)
+- **2026-07-06** (ConvAI, rilevante per la migrazione): `simulate-conversation` **deprecato** → Agent Tests; **scoring numerico** nei criteri di eval; **`cost_fiat`** (USD) nei metadata conversazione; **`interruption_mode`** per-tool (`disable_during_tool`); `platform_charge`/`platform_price`/`platform_usage` per billing consolidato; UUI SIP REFER transfer 256→8192 char. Fonte: https://elevenlabs.io/docs/changelog/2026/7/6
 - **2026-06 (baseline)**: deprecati `eleven_monolingual_v1`/`eleven_multilingual_v1` (rimozione 2026-07-09); nuovi formati mp3 alta qualità (non rilevante). Conferma raccomandazione Flash per realtime; v3 ora GA.
 
 ## Fonti
