@@ -1,6 +1,34 @@
-<!-- last-check: 2026-07-08 -->
+<!-- last-check: 2026-07-10 -->
 # ElevenLabs — aggiornamenti & best practice per Dance Voice Agent
-_Ultimo check: 2026-07-08 · Stack ATTUALE: **TTS API diretta** (pipeline custom Twilio+Deepgram+GPT-4o) · Modello: `eleven_flash_v2_5` · output: `ulaw_8000` nativo Twilio via WS multi-context + `auto_mode` · Lingua: it/es/en dinamica_
+_Ultimo check: 2026-07-10 · Stack ATTUALE: **TTS API diretta** (pipeline custom Twilio+Deepgram+GPT-4o) · Modello: `eleven_flash_v2_5` · output: `ulaw_8000` nativo Twilio via WS multi-context + `auto_mode` · Lingua: it/es/en dinamica_
+
+## 2026-07-10 — GPT-Live / `gpt-realtime`: minaccia competitiva al layer voce (analisi, non implementazione)
+
+OpenAI lancia **GPT-Live** (2026-07-08): voce full-duplex end-to-end (ascolta+parla insieme, backchannel "mhmm", ~300ms time-to-first-audio vs ~1.700ms pipeline stacked), con **delega nativa a GPT-5.5** per reasoning/web mentre mantiene il flusso vocale. Rimpiazza Advanced Voice Mode in ChatGPT.
+
+**Reality check che ridimensiona l'impatto su di noi:** GPT-Live è **prodotto consumer, NON API** — OpenAI dice *"plan to bring to the API soon"* + form di notifica. Nessun endpoint/model-id/pricing. Per questo agente = **non usabile oggi**.
+
+Il vero termine di paragone è il fratello API già GA: **famiglia `gpt-realtime`** (`gpt-realtime-2.1`, `-2.1-mini`). È lei che va confrontata col nostro stack, non GPT-Live.
+
+| Asse | `gpt-realtime-2.1` (API, GA) | Impatto su Dance Voice Agent |
+|---|---|---|
+| Paradigma | S2S nativo (un grafo, un hop) — **half-duplex veloce**, no full-duplex/backchannel nativo (esclusiva del consumer GPT-Live) | La pipeline custom (STT+LLM+TTS) resta più modulare ma più lenta |
+| Telefonia | **SIP phone calling nativo** | ⚠️ **erode il vantaggio Twilio+EL** — la nostra ragione d'essere sul canale telefonico |
+| Costo | $4/M in · $16/M out + billing audio separato | vs oggi: GPT-4o + Deepgram + EL flash separati |
+| LLM | **sposato a OpenAI** | oggi siamo già su GPT-4o → lock-in poco diverso, ma perdiamo l'opzione brain-agnostic |
+| Delega 2-livelli | nativa nel consumer; in API si **hand-rolla** (`gpt-realtime` front → escala a GPT-5.5 → reinietta con filler-audio) | replicabile ma il boundary di escalation = nuovo rischio latenza/coerenza |
+
+**Dove ElevenLabs sopravvive (nicchia reale, coincide col lavoro cliente):** voice cloning/brand-voice proprietaria (menu voci S2S = fisso), controllo prosodico deterministico (slider stability/style), **LLM-independence** (voce↔cervello disaccoppiati), qualità multilingua IT/ES. "Inutile" solo per bot generico+inglese+voce-fissa+brain-OpenAI.
+
+**Argomento PSTN (coerente col finding v3 di questo file):** su linea telefonica a 8kHz μ-law il floor di latenza è **rete PSTN + codec**, non il modello. Il guadagno S2S (~300ms) è **parzialmente mascherato** dal transport telefonico — come la qualità extra di v3 viene buttata dal band-limiting. Il salto di naturalezza si sente in WebRTC/browser, molto meno al telefono. → sul NOSTRO canale il beneficio di `gpt-realtime` è ridotto.
+
+**Effetto sul piano di migrazione (sezione 2026-07-08 sotto):** `gpt-realtime` è ora una **terza opzione** che compete sia con la custom-pipeline sia con EL ConvAI-full. Sovrappone SIP+delega+S2S in un solo vendor. Non cambia la raccomandazione (ConvAI-full resta il target per zero-app-server), ma va **tenuto d'occhio**: se OpenAI apre l'API GPT-Live full-duplex con SIP, il calcolo cambia.
+
+**Azione ora:** nessuna. `gpt-realtime` non giustifica un rewrite del layer voce — EL flash + pipeline custom resta valido, e sul telefono il vantaggio latenza è mascherato. Watch-item: apertura API GPT-Live + eventuale full-duplex nativo su SIP. Principio guida: **architettura LLM-agnostic**, S2S come componente sostituibile, non fondamenta.
+
+**Fonti:** [OpenAI — Introducing GPT-Live](https://openai.com/index/introducing-gpt-live/) · [apidog — GPT-Live API status](https://apidog.com/blog/gpt-live-api/) · [Silicon Report — 300ms target](https://www.siliconreport.com/openai-rolls-out-gpt-live-targeting-300ms-latency-for-real-time-voice-53903ae9) · [SiliconANGLE](https://siliconangle.com/2026/07/08/openai-launches-gpt-live-voice-model-series-ahead-broad-gpt-5-6-release/)
+
+---
 
 ## 2026-07-08 — Fattibilità migrazione → Conversational AI **full** (analisi, non implementazione)
 

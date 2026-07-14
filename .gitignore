@@ -223,3 +223,7 @@ __marimo__/
 
 # Graphify
 graphify-out/
+
+# audio samples (binari, non versionati)
+voice-samples/*.mp3
+voice-samples/*.wav
