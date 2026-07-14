@@ -181,7 +181,7 @@
       "background_voice_detection": false
     },
     "agent": {
-      "first_message": "[calorosa][rapidly] Ciao! Sono Tropicoqueta, l'assistente automatico di Ritmo Tropicale. Dimmi pure!",
+      "first_message": "[rapidly][calorosa] Ciao! Sono Tropicoqueta, l'assistente automatico di Ritmo Tropicale. Dimmi pure!",
       "language": "it",
       "hinglish_mode": false,
       "dynamic_variables": {
@@ -1184,7 +1184,7 @@
   },
   "metadata": {
     "created_at_unix_secs": 1779440002,
-    "updated_at_unix_secs": 1784064089
+    "updated_at_unix_secs": 1784066929
   },
   "platform_settings": {
     "evaluation": {
@@ -1586,7 +1586,7 @@
     "access_source": "creator"
   },
   "tags": [],
-  "version_id": "agtvrsn_1501kxh837m5fpfszb7xvysx5c86",
+  "version_id": "agtvrsn_3201kxhasx67fyxbwtvpjs716mjd",
   "branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
   "main_branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
   "procedures": {

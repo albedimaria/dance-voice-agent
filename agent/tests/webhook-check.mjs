@@ -69,6 +69,16 @@ for (const n of KNOWN) {
     v.caller_known === 'true' && v.student_name && v.student_id && greeting.includes(v.student_name.split(' ')[0]),
     `caller_known=${v.caller_known} name=${v.student_name} greeting=${greeting}`,
   );
+  // Su eleven_v3_conversational la velocità del parlato è FISSA: tts.speed non
+  // fa nulla (misurato). L'unica leva è il tag, e il saluto è l'unico punto in
+  // cui possiamo garantirlo, perché lo scriviamo noi invece di sperare che lo
+  // scriva il modello (nei turni successivi lo mette una volta su due).
+  // Se questo check diventa rosso, la voce ha ricominciato a strascicare.
+  check(
+    `chiamante noto (${n}) → il saluto apre con [rapidly]`,
+    greeting.startsWith('[rapidly]'),
+    `greeting=${greeting}`,
+  );
 }
 
 // Ogni variabile dichiarata sull'agente DEVE tornare sempre: se ne manca una,
@@ -83,6 +93,21 @@ for (const body of [{}, { caller_id: '' }, { caller_id: 'pippo' }]) {
     `mancano: ${missing.join(', ')}`,
   );
 }
+
+// L'altro saluto — quello che sente chi NON è in rubrica, cioè ogni cliente
+// nuovo — non passa dal webhook: è il first_message configurato sull'agente.
+// Va controllato lì, o resta indietro la metà delle telefonate che contano di più.
+const agent = await (
+  await fetch(`https://api.elevenlabs.io/v1/convai/agents/${env.ELEVENLABS_AGENT_ID || 'agent_9001ks7e78grfazrhck2vfmy2kcr'}`, {
+    headers: { 'xi-api-key': env.ELEVENLABS_API_KEY },
+  })
+).json();
+const staticGreeting = agent.conversation_config?.agent?.first_message ?? '';
+check(
+  'chiamante sconosciuto → il saluto dell\'agente apre con [rapidly]',
+  staticGreeting.startsWith('[rapidly]'),
+  `first_message=${staticGreeting}`,
+);
 
 const passed = checks.filter((c) => c.ok).length;
 console.log(`\n══ WEBHOOK: ${passed}/${checks.length}`);

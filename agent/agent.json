@@ -3,7 +3,7 @@
   "agent_id": "agent_9001ks7e78grfazrhck2vfmy2kcr",
   "llm": "gemini-2.5-flash",
   "temperature": 0.2,
-  "first_message": "[calorosa][rapidly] Ciao! Sono Tropicoqueta, l'assistente automatico di Ritmo Tropicale. Dimmi pure!",
+  "first_message": "[rapidly][calorosa] Ciao! Sono Tropicoqueta, l'assistente automatico di Ritmo Tropicale. Dimmi pure!",
   "language": "it",
   "dynamic_variable_placeholders": {
     "student_name": "",
