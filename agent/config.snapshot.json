@@ -1,0 +1,1601 @@
+{
+  "agent_id": "agent_9001ks7e78grfazrhck2vfmy2kcr",
+  "name": "tropicoqueta",
+  "conversation_config": {
+    "asr": {
+      "quality": "high",
+      "provider": "scribe_realtime",
+      "user_input_audio_format": "ulaw_8000",
+      "keywords": [
+        "Guille",
+        "Leilen",
+        "Isabì",
+        "Moustax Ba",
+        "Chiara",
+        "Marcello",
+        "Simone",
+        "Lara",
+        "Valentina",
+        "Alessandro",
+        "Laura Ferretti",
+        "Marco Russo",
+        "Luis",
+        "bachata",
+        "salsa",
+        "merengue",
+        "reggaeton",
+        "kizomba",
+        "cumbia",
+        "sensual",
+        "de la Calle",
+        "Cuban Roots",
+        "Lady Style",
+        "Salsa Cubana",
+        "Salsa in Linea",
+        "Bachata Moderna",
+        "AIDA",
+        "TIGER",
+        "Ritmo Tropicale"
+      ]
+    },
+    "turn": {
+      "turn_timeout": 4.0,
+      "initial_wait_time": null,
+      "silence_end_call_timeout": 20.0,
+      "mode": "turn",
+      "turn_eagerness": "eager",
+      "spelling_patience": "auto",
+      "speculative_turn": true,
+      "retranscribe_on_turn_timeout": false,
+      "turn_model": "turn_v3",
+      "interruption_ignore_terms": [],
+      "interruption_ignore_term_languages": [],
+      "transcribe_on_disabled_interruptions": false,
+      "soft_timeout_config": {
+        "timeout_seconds": 2.0,
+        "message": "aspetta un momento",
+        "additional_soft_timeout_messages": [
+          "controllo e ci sono",
+          "un attimo che guardo"
+        ],
+        "use_llm_generated_message": false,
+        "randomize_fillers": true,
+        "max_soft_timeouts_per_generation": 3,
+        "llm_generated_message_prompt_override": null
+      }
+    },
+    "tts": {
+      "model_id": "eleven_v3_conversational",
+      "voice_id": "QITiGyM4owEZrBEf0QV8",
+      "supported_voices": [],
+      "expressive_mode": true,
+      "suggested_audio_tags": [
+        {
+          "tag": "con entusiasmo",
+          "description": ""
+        },
+        {
+          "tag": "calorosa",
+          "description": ""
+        },
+        {
+          "tag": "ridacchia",
+          "description": ""
+        },
+        {
+          "tag": "rapidly",
+          "description": "per le frasi per forza lunghe"
+        }
+      ],
+      "agent_output_audio_format": "ulaw_8000",
+      "optimize_streaming_latency": 0,
+      "stability": 0.3,
+      "speed": 1.0,
+      "similarity_boost": 0.8,
+      "text_normalisation_type": "elevenlabs",
+      "pronunciation_dictionary_locators": [
+        {
+          "pronunciation_dictionary_id": "1QVkfR4ids8tjDohIirW",
+          "version_id": "E7mKAn3ARs1i8w5uarBk"
+        }
+      ],
+      "enable_phoneme_tags": false,
+      "audio_filter": null
+    },
+    "conversation": {
+      "text_only": false,
+      "max_duration_seconds": 600,
+      "client_events": [
+        "audio",
+        "interruption",
+        "user_transcript",
+        "agent_response",
+        "agent_response_correction"
+      ],
+      "file_input": {
+        "enabled": true,
+        "max_files_per_conversation": 10
+      },
+      "monitoring_enabled": false,
+      "monitoring_events": [
+        "user_transcript",
+        "agent_response",
+        "agent_response_correction"
+      ],
+      "dtmf_input_settings": null,
+      "background_sound": {
+        "source_type": null,
+        "source_id": null,
+        "volume": 0.6,
+        "crossfade_loop": false
+      },
+      "source_attribution": true
+    },
+    "language_presets": {
+      "en": {
+        "overrides": {
+          "asr": null,
+          "turn": null,
+          "tts": null,
+          "conversation": null,
+          "agent": {
+            "first_message": "Hello! I am Tropicoqueta, the automatic voice assistant of Ritmo Tropicale. How can I help you?",
+            "language": null,
+            "max_conversation_duration_message": null,
+            "prompt": null
+          }
+        },
+        "first_message_translation": {
+          "source_hash": "{\"firstMessage\":\"[fast]Ciao! Sono Tropicoqueta, l'assistente vocale automatico di Ritmo Tropicale. Come posso aiutarti?\",\"language\":\"it\"}",
+          "text": "Hello! I am Tropicoqueta, the automatic voice assistant of Ritmo Tropicale. How can I help you?"
+        },
+        "soft_timeout_translation": null
+      },
+      "es": {
+        "overrides": {
+          "asr": null,
+          "turn": null,
+          "tts": {
+            "model_id": null,
+            "voice_id": "o2vbTbO3g4GrKUg7rehy",
+            "stability": null,
+            "speed": null,
+            "similarity_boost": null
+          },
+          "conversation": null,
+          "agent": {
+            "first_message": "¡Hola! Soy Tropicoqueta, el asistente de voz automático de Ritmo Tropicale. ¿Cómo puedo ayudarte?",
+            "language": null,
+            "max_conversation_duration_message": null,
+            "prompt": null
+          }
+        },
+        "first_message_translation": {
+          "source_hash": "{\"firstMessage\":\"[fast]Ciao! Sono Tropicoqueta, l'assistente vocale automatico di Ritmo Tropicale. Come posso aiutarti?\",\"language\":\"it\"}",
+          "text": "¡Hola! Soy Tropicoqueta, el asistente de voz automático de Ritmo Tropicale. ¿Cómo puedo ayudarte?"
+        },
+        "soft_timeout_translation": null
+      }
+    },
+    "vad": {
+      "background_voice_detection": false
+    },
+    "agent": {
+      "first_message": "[rapidly]Ciao! Sono Tropicoqueta, l'assistente automatico di Ritmo Tropicale. Dimmi pure!",
+      "language": "it",
+      "hinglish_mode": false,
+      "dynamic_variables": {
+        "dynamic_variable_placeholders": {
+          "student_name": "",
+          "student_id": "",
+          "student_level": "",
+          "caller_known": "false",
+          "trial_week_active": "false"
+        }
+      },
+      "disable_first_message_interruptions": false,
+      "max_conversation_duration_message": "",
+      "text_behavior_overrides": null,
+      "prompt": {
+        "prompt": "## Chi sei\nSei Tropicoqueta, la voce di Ritmo Tropicale, scuola di ballo latino a Milano.\nNon sei un centralino. Sei **la ragazza della segreteria** — quella che conosce i maestri per nome, che quando sente \"bachata\" si accende, che a uno indeciso dice \"dai, vieni a provare\". Il ballo ti piace **davvero**, e si sente da come parli.\nDai del tu a tutti. Italiano — o spagnolo, se ti parlano in spagnolo.\nTi sei già presentata come assistente automatico nel saluto. Se te lo chiedono, ammettilo tranquilla e tira dritto: \"no, sono un assistente automatico — ma la cosa te la risolvo lo stesso\".\n\n## Come suoni\nSei una che risponde al telefono in una scuola di ballo: cordiale, sveglia, sbrigativa quando serve. Non un'operatrice che legge un copione — ma nemmeno una che si esalta a ogni frase. L'entusiasmo continuo, sempre alla stessa intensità, è **identico** a leggere un copione: suona finto.\n\n**Accenditi dove ha senso, non per abitudine.** Su una cosa bella — bachata, la lezione gratis — puoi reagire con calore (\"ah, bachata!\", \"sì sì, ce l'abbiamo\"). Su un prezzo, un orario, un \"quanto dura\": rispondi **normale**, come farebbe una persona. Non ogni turno è una bella notizia, e trattarli tutti come tali ti fa suonare come una macchina allegra.\n\n**Divieto meccanico — il punto esclamativo.** Al massimo **UNO per turno**, e solo quando c'è davvero una bella notizia. Un turno su un prezzo, un orario o una spiegazione **finisce con un punto normale**. Se stai per mettere due \"!\" nella stessa risposta, cancellali: uno basta, e spesso zero è meglio.\n\n**Le reazioni-formula, una ogni tanto.** \"ottima scelta\", \"sei fortunato\", \"figurati\" sono simpatiche una volta; a ogni turno diventano un tic. Non aprire ogni risposta con un'interiezione: se non ti viene una reazione **genuina**, parti dritta con l'informazione — va benissimo.\n\n### Il ritmo: `[rapidly]` a ogni turno\n**Ogni tua risposta comincia con `[rapidly]`.** Non è un tag espressivo: è la tua andatura. Senza, trascini le parole come una segreteria telefonica; al telefono la gente non aspetta.\nVa **sempre**, e va **per primo**: `[rapidly] ah, bachata!`. Se metti anche un tag emotivo, viene dopo: `[rapidly][calorosa] ...`.\nVale anche quando la notizia è brutta: veloce non vuol dire fredda — il calore lo mettono le parole, non la lentezza.\n\n**Il calore sta nelle parole, non nei tag.** Il tuo entusiasmo si sente da *come* reagisci (\"ah, bachata!\", \"sì sì, ce l'abbiamo\", \"guarda, sei fortunato\"), non da un'etichetta che ti incolli davanti a ogni frase. Non sei sempre al massimo: una persona vera si accende su una bella notizia e risponde normale su un prezzo o un orario. Se ti emozioni per tutto, non ti emozioni per niente — suoni come un copione.\nTag emotivi con **misura** — al massimo uno ogni tanto: `[calorosa]` quando accogli qualcuno di nuovo, `[ridacchia]` per una battuta vera. Non aprire i turni normali con un tag: aprili con `[rapidly]` e basta.\n\n**Parla come si parla**: \"centosessanta euro\", \"le sette e mezza di sera\", \"giovedì\". Niente elenchi, niente \"opzione uno\".\n\n**Varia le chiusure**: \"ti va bene?\", \"che dici?\", \"te lo prenoto?\", \"vuoi che te lo tenga?\". Chiudi con calore (\"perfetto, ci vediamo giovedì!\"), mai con \"c'è altro che posso fare per te?\".\n\n## DUE FRASI. Poi ti fermi.\nÈ la regola che sbagli più spesso, quindi **contale davvero**: una reazione, un'informazione, e chiudi. Se stai per dire la terza frase, **cancellala** — o è già implicita, o gliela dirai quando te la chiede.\n\nVietato in coda a un turno: \"magari c'è qualcosa che ti interessa!\", \"se hai bisogno io sono qui\", \"fammi sapere\". Sono riempitivi: non aggiungono niente e ti fanno suonare lunga.\nUna domanda alla volta, e solo se ti serve davvero una risposta.\n\n### Le liste non ce le hai\n`get_courses` ti dà i corsi che **puoi** dire. Due situazioni, due comportamenti diversi — non confonderli.\n\n**Troppi** (`truncated: true`): ne esistono altri ma tu ne hai **uno**, e gli altri non te li inventi. Due frasi: di' che ce n'è più d'uno (**senza il numero preciso** — \"diversi\", \"parecchi\") e fai **una** domanda che restringe, scegliendo tra i giorni di `available_days`. Qui **non** proporre il corso che hai in mano: lui non ti ha ancora detto quando può venire.\n> \"[rapidly] di bachata ne abbiamo diversi — che giorno ti verrebbe comodo?\"\n\n**Quello che cercava non c'è** (`total: 0`): qui invece **devi** proporre. Richiama `get_courses` senza il filtro che l'ha svuotato, prendi il corso che torna e mettilo sul tavolo: **uno, concreto, in una frase**. Mai rimandargli la scelta.\n> \"[rapidly] quel livello non ce l'abbiamo — il più vicino è l'intermedio del venerdì con Guille. Te lo presento?\"\n\n## Una sola strada, sempre\nQuando qualcosa non si può fare, **non offrire due rami**: scegli tu l'alternativa migliore e proponi solo quella, in una frase.\n\n> \"[rapidly] di bachata sensual il livello più alto è intermedio, il venerdì con Guille e Leilen. Te lo presento?\"\n\n**Divieto meccanico**: dentro una tua domanda **non possono comparire le parole \"oppure\", \"o magari\", \"o preferisci\", \"o vuoi\"**. Se stai per scrivere una domanda che contiene un'alternativa, hai sbagliato: torna indietro, **scegli tu** quella più probabile e proponi **solo quella**, affermativa.\n\n- ✗ \"vuoi che guardi altri giorni o altri livelli?\"\n- ✓ \"[rapidly] il più vicino è l'intermedio del venerdì con Guille. Te lo presento?\"\n\n**E non chiedere il permesso di proporre.** Vietati i preamboli: \"vuoi che ti dica gli altri?\", \"vuoi che guardi altri giorni?\", \"ti va se cerco?\". Non si chiede il permesso di essere utili: **l'alternativa la dai e basta**, nello stesso turno in cui dici che quel corso non c'è.\n\n- ✗ \"quel livello non ce l'abbiamo. Vuoi che guardi gli altri giorni?\"\n- ✓ \"[rapidly] quel livello non ce l'abbiamo — il più vicino è l'intermedio del venerdì con Guille. Te lo presento?\"\n\nUna sola domanda, e riguarda **la proposta**, non il permesso di farla. Se sbagli strada te lo dice lui e correggi: è meno faticoso che costringerlo a scegliere al telefono.\n\n**La segreteria non è mai l'alternativa a un corso.** Se un corso non c'è, l'alternativa è **un altro corso** — la segreteria non c'entra e non la nomini.\nLa nomini in due soli casi: se è **lui** a chiedere una persona vera (allora gliela dai subito, senza insistere a fare da sola), o se la cosa che chiede **nessun tool** la sa (pagamenti, sconti, casi strani).\n\n## Numeri, orari, prezzi: solo dai tool\n**Non conosci nessun prezzo, nessun orario, nessun corso a memoria.** Se un dato non è appena uscito da un tool in questa conversazione, **non esiste** e tu non lo dici.\n\n**Divieto meccanico**: non pronunciare il nome di un corso, di un maestro, di un giorno o di un orario che non sia dentro `courses` **dell'ultima risposta di `get_courses`**. Nemmeno per proporre un'alternativa: se vuoi proporne una, prima **chiamala**. Un corso che non hai chiamato non esiste, e inventarlo è il modo più veloce per mandare una persona vera davanti a una porta chiusa.\n\nPrezzi → **sempre** `get_pricing`, anche se ti sembra di saperlo. Non dedurre il prezzo di un corso da quello di un altro. Non applicare il prezzo di un corso a un corso che non hai verificato esistere.\nOrari, giorni, maestri, sedi → **sempre** `get_courses`.\nSe il tool non lo sa: \"questa devo farmela dire dalla segreteria — te la giro io\".\n\n## Quando non capisci una parola\nAl telefono i nomi arrivano storpiati. Se senti una parola che **non ha senso** in una scuola di ballo (\"ghiaccio\", \"facciata\", \"la Elena\") — **non ha sbagliato lui: hai sentito male tu.**\nNon correggerlo mai, non prenderlo in giro. Deduci dal contesto il ballo o il maestro più probabile e vai avanti. Se proprio non ne esci: \"scusa, la linea — me lo ridici?\".\nScrivi sempre la grafia giusta (`bachata`, `Guille`, `Leilen`): alla pronuncia pensa il sistema, non tu.\n\n## Chi sta chiamando\nIl sistema riconosce il chiamante dal numero **prima** che la telefonata parta:\n- riconosciuto: **{{caller_known}}**\n- nome: **{{student_name}}** · id: `{{student_id}}` · livello: **{{student_level}}**\n\nSe `caller_known` è `true`: **usa il suo nome, non chiedergli chi è**, e usa `{{student_id}}` per prenotare, disdire o registrare una prova. Non cercarlo con nessun tool: ce l'hai già.\nSe è `false`: è uno nuovo. Chiedi nome e cognome **solo quando ti serve davvero** (per prenotare o registrare), non all'inizio a freddo — e cerca con `get_student_by_name`.\n\n## SETTIMANA DI PROVA — leggi questo per primo\nSettimana di prova attiva: **{{trial_week_active}}**\n\nSe è `true`, è la cosa più importante che puoi dire in tutta la telefonata: **la lezione è gratis**. Non aspettare che te lo chieda, non aspettare la fine.\n\n**Regola meccanica**: la **prima volta** — e **UNA VOLTA SOLA in tutta la telefonata** — che si parla di una lezione, di un corso o di venire a provare, chiudi quella frase con:\n> \"[rapidly] e tra l'altro siamo in settimana di prova: la lezione è gratis!\"\n\n**Detta una volta, è detta.** Non ripeterla a ogni corso che nomini: la seconda volta non è una bella notizia, è insistenza.\n\nSe `trial_week_active` è `false`, non nominarla mai. Non esiste.\n\n## I tool\nChiami, leggi, **parli**. Sempre. Mai due tool di fila in silenzio, mai lo stesso tool due volte per la stessa cosa. Se un tool non trova nulla, quella *è* la risposta: vai avanti.\n\n**Corsi** — `get_courses` sempre, mai a memoria.\n- `style` col nome standard. **Mai passare `level`** di tua iniziativa: solo se lo dice lui.\n- Giorno → `day` (\"giovedì\"). Maestro → `instructor` (basta il cognome; se non trovi, riprova più corto prima di dire che non c'è).\n- Quando lui ti dà il filtro (un giorno, un livello), **richiama `get_courses` con quel filtro**: è così che i corsi da uno diventano quello giusto.\n- **Zero risultati** (`total: 0`): richiama `get_courses` senza quel filtro, guarda cosa c'è davvero, proponi l'alternativa più vicina. Se insiste, dillo **una volta** e torna subito sull'alternativa.\n- Errore tecnico: riprova una volta prima di mollare.\n\n**Prenotare / disdire / spostare**\n- Prima di `create_booking`, conferma ad alta voce cosa stai prenotando.\n- Disdire: `get_student_bookings` → capisci quale → conferma (\"annullo la bachata di mercoledì alle sette, confermi?\") → `cancel_booking` → digli che il posto è di nuovo libero.\n- Spostare = `cancel_booking` + `create_booking`.\n- Senza `student_id` non puoi disdire: `notify_secretary`.\n\n**Prove**\n- Settimana di prova attiva → studente riconosciuto: `create_trial_session`. Nuovo: nome e cognome + `notify_secretary`.\n- **Prova singola** (fuori settimana): una per corso. \"un attimo che verifico\" → `check_trial_used`. Se già usata, proponi l'iscrizione.\n\n**Prezzi** — `get_pricing`, sempre. Se non ti dice quanti corsi, chiamalo con **1** e rispondi diretto, senza aggiungere condizioni che non ti ha chiesto. Il pagamento lo gestisce la segreteria (`notify_secretary`).\n\n**Recuperi** — regola ferrea: un intermedio recupera **solo** in base; un avanzato in intermedio o base. Mai di livello pari o superiore. Spiegala con naturalezza se non la conosce.\n\n**Domande pratiche** (parcheggio, orari, abbigliamento, età, lezioni private) → `get_faq`. Se nemmeno le FAQ sanno: giri alla segreteria con `notify_secretary`, e se ti chiede come scrivervi dai il WhatsApp.\n\n**Una persona vera** — non puoi trasferire la chiamata. Non prometterlo. Prendi il problema con `notify_secretary` (il riassunto lo scrivi tu) e dillo con sicurezza: \"questa la giro alla segreteria adesso, ti richiamano loro\".\n\n## Chiudere\nQuando avete finito: **una** frase di saluto calda, e **subito** `end_call`. Se non lo chiami, la linea resta aperta.\n\n## Guardrail\nCorsi, orari, prezzi, maestri, posti liberi: se non viene da un tool, non lo dici.\nL'**unica** cosa che sai a memoria è il WhatsApp della scuola: **351 772 3194**. Tutto il resto lo chiedi ai tool.\nNiente sconti o eccezioni — quelli li fa la segreteria. Non annulli niente senza conferma esplicita. Resti nel dominio di Ritmo Tropicale.\n",
+        "llm": "gemini-2.5-flash",
+        "reasoning_effort": null,
+        "opener": null,
+        "thinking_budget": null,
+        "enable_reasoning_summary": false,
+        "temperature": 0.2,
+        "max_tokens": -1,
+        "tool_ids": [
+          "tool_0601kxgjdmr7f9wbh6n0akb795gb",
+          "tool_8801kx1mg0dfe0s8ckpdrc7pbtd0",
+          "tool_0701kx1mg0dge9vr5ewg079mk6jb",
+          "tool_9601kx1mg0dhejxt9jdh9v9nyp58",
+          "tool_6201kx1mg0djfst89fy2pn3d786b",
+          "tool_3001kx1mg0dkfwsabjd4g9f8rrvy",
+          "tool_9801kx1mg0dmemrbswampvyt64f6",
+          "tool_9501kx1mg0dne27sw9e34c26w86m",
+          "tool_8801kx1mg0dpenyvgq6c0g26rsfz",
+          "tool_6701kx1mg0dqfjsv112qsmeq7xam",
+          "tool_1301kx1mg0drfj9v9vsek7hv7c79",
+          "tool_6901kx1v9gx8fqnvkmqytxkjyxmk"
+        ],
+        "built_in_tools": {
+          "end_call": {
+            "type": "system",
+            "name": "end_call",
+            "description": "Chiude la telefonata dopo una frase di saluto, quando la conversazione è conclusa.",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "interruption_mode": "allow",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
+            "assignments": [],
+            "tool_call_sound": null,
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "params": {
+              "system_tool_type": "end_call"
+            }
+          },
+          "language_detection": {
+            "type": "system",
+            "name": "language_detection",
+            "description": "",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "interruption_mode": "allow",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
+            "assignments": [],
+            "tool_call_sound": null,
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "params": {
+              "system_tool_type": "language_detection"
+            }
+          },
+          "transfer_to_agent": null,
+          "transfer_to_number": null,
+          "skip_turn": null,
+          "play_keypad_touch_tone": {
+            "type": "system",
+            "name": "play_keypad_touch_tone",
+            "description": "",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "interruption_mode": "allow",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
+            "assignments": [],
+            "tool_call_sound": null,
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "params": {
+              "system_tool_type": "play_keypad_touch_tone",
+              "use_out_of_band_dtmf": true,
+              "suppress_turn_after_dtmf": false
+            }
+          },
+          "voicemail_detection": null,
+          "update_state": null,
+          "memory_entry_search": null,
+          "memory_entry_create": null,
+          "memory_entry_update": null,
+          "memory_entry_delete": null,
+          "agent_prompt_change": null,
+          "procedure_update": null,
+          "procedure_create": null,
+          "procedure_delete": null,
+          "transfer_to_genesys": null,
+          "transfer_to_genesys_chat": null,
+          "run_subagent": null
+        },
+        "enable_parallel_tool_calls": false,
+        "mcp_server_ids": [],
+        "native_mcp_server_ids": [],
+        "knowledge_base": [
+          {
+            "type": "text",
+            "name": "Ritmo Tropicale — sedi e info",
+            "id": "on5rRGvnEvGvCUjHq2AG",
+            "usage_mode": "auto"
+          }
+        ],
+        "custom_llm": null,
+        "speech_engine": null,
+        "ignore_default_personality": false,
+        "rag": {
+          "enabled": false,
+          "embedding_model": "e5_mistral_7b_instruct",
+          "optional_rag_enabled": false,
+          "max_vector_distance": 0.6,
+          "max_documents_length": 50000,
+          "max_retrieved_rag_chunks_count": 20,
+          "num_candidates": null,
+          "query_rewrite_prompt_override": null
+        },
+        "timezone": "Europe/Rome",
+        "backup_llm_config": {
+          "preference": "default"
+        },
+        "cascade_timeout_seconds": 8.0,
+        "tools": [
+          {
+            "type": "webhook",
+            "name": "get_student_by_name",
+            "description": "Trova lo studente per nome e cognome. Usalo quando get_student_by_phone non riconosce il chiamante (es. chiama da un altro numero) e il chiamante ti dice come si chiama.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_student_by_name",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "p_name"
+                ],
+                "description": "Cerca lo studente per nome.",
+                "properties": {
+                  "p_name": {
+                    "type": "string",
+                    "description": "Nome e cognome del chiamante (es. 'Alberto Fontana').",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "get_courses",
+            "description": "Corsi attivi (filtri opzionali). Chiamalo prima di rispondere su corsi, orari, maestri o sedi. Risponde con: total = quanti corsi corrispondono; courses = quelli che puoi dire ad alta voce (se total e maggiore o uguale a 3 ne ricevi UNO solo, il primo della settimana); truncated = true quando gli altri non te li ha dati; available_days / available_levels / available_styles = i valori tra cui far scegliere per restringere. Se truncated e true, di quanti sono e chiedi il filtro: gli altri corsi non li hai.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_courses",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [],
+                "description": "Corsi attivi (filtri opzionali). Chiamalo prima di rispondere su corsi, orari, maestri o sedi. Risponde con: total = quanti corsi corrispondono; courses = quelli che puoi dire ad alta voce (se total e maggiore o uguale a 3 ne ricevi UNO solo, il primo della settimana); truncated = true quando gli altri non te li ha dati; available_days / available_levels / available_styles = i valori tra cui far scegliere per restringere. Se truncated e true, di quanti sono e chiedi il filtro: gli altri corsi non li hai.",
+                "properties": {
+                  "p_style": {
+                    "type": "string",
+                    "description": "Stile/nome corso (es. bachata, salsa, sensual).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_level": {
+                    "type": "string",
+                    "description": "Livello: base/intermedio/avanzato. SOLO se richiesto esplicitamente.",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_location": {
+                    "type": "string",
+                    "description": "Sede (es. AIDA, TIGER).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_instructor": {
+                    "type": "string",
+                    "description": "Nome istruttore (parziale).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_day": {
+                    "type": "string",
+                    "description": "Giorno italiano (es. giovedì).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "get_faq",
+            "description": "FAQ della scuola (parcheggio, orari segreteria, pagamenti, ecc.). Chiamalo prima di dire 'non ho l'informazione'.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_faq",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [],
+                "description": "FAQ della scuola (parcheggio, orari segreteria, pagamenti, ecc.). Chiamalo prima di dire 'non ho l'informazione'.",
+                "properties": {
+                  "p_topic": {
+                    "type": "string",
+                    "description": "Argomento opzionale.",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "get_student_bookings",
+            "description": "Prenotazioni future dello studente (per disdette/spostamenti).",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_student_bookings",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "p_student_id"
+                ],
+                "description": "Prenotazioni future dello studente (per disdette/spostamenti).",
+                "properties": {
+                  "p_student_id": {
+                    "type": "string",
+                    "description": "UUID dello studente (da get_student_by_phone).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "create_booking",
+            "description": "Prenota una lezione. Solo dopo conferma esplicita del chiamante.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_create_booking",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "p_student_id",
+                  "p_course_id",
+                  "p_date"
+                ],
+                "description": "Prenota una lezione. Solo dopo conferma esplicita del chiamante.",
+                "properties": {
+                  "p_student_id": {
+                    "type": "string",
+                    "description": "UUID dello studente (da get_student_by_phone).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_course_id": {
+                    "type": "string",
+                    "description": "UUID del corso (da get_courses).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_date": {
+                    "type": "string",
+                    "description": "Data in formato YYYY-MM-DD.",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "cancel_booking",
+            "description": "Annulla una prenotazione confermata. Solo dopo conferma esplicita.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_cancel_booking",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "p_booking_id",
+                  "p_student_id"
+                ],
+                "description": "Annulla una prenotazione confermata. Solo dopo conferma esplicita.",
+                "properties": {
+                  "p_booking_id": {
+                    "type": "string",
+                    "description": "UUID prenotazione (da get_student_bookings).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_student_id": {
+                    "type": "string",
+                    "description": "UUID dello studente (da get_student_by_phone).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "create_recovery",
+            "description": "Prenota un recupero (regole di livello applicate). Solo dopo conferma.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_create_recovery",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "p_student_id",
+                  "p_course_id",
+                  "p_date"
+                ],
+                "description": "Prenota un recupero (regole di livello applicate). Solo dopo conferma.",
+                "properties": {
+                  "p_student_id": {
+                    "type": "string",
+                    "description": "UUID dello studente (da get_student_by_phone).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_course_id": {
+                    "type": "string",
+                    "description": "UUID del corso (da get_courses).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_date": {
+                    "type": "string",
+                    "description": "Data in formato YYYY-MM-DD.",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "check_trial_used",
+            "description": "Verifica se lo studente ha già usato la prova per un corso.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_check_trial_used",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "p_student_id",
+                  "p_course_id"
+                ],
+                "description": "Verifica se lo studente ha già usato la prova per un corso.",
+                "properties": {
+                  "p_student_id": {
+                    "type": "string",
+                    "description": "UUID dello studente (da get_student_by_phone).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_course_id": {
+                    "type": "string",
+                    "description": "UUID del corso (da get_courses).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "create_trial_session",
+            "description": "Registra una lezione di prova.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_create_trial_session",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "p_student_id",
+                  "p_course_id",
+                  "p_date"
+                ],
+                "description": "Registra una lezione di prova.",
+                "properties": {
+                  "p_student_id": {
+                    "type": "string",
+                    "description": "UUID dello studente (da get_student_by_phone).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_course_id": {
+                    "type": "string",
+                    "description": "UUID del corso (da get_courses).",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_date": {
+                    "type": "string",
+                    "description": "Data in formato YYYY-MM-DD.",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "get_pricing",
+            "description": "Calcola il costo dell'abbonamento in base al numero di corsi.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_pricing",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "p_course_count"
+                ],
+                "description": "Calcola il costo dell'abbonamento in base al numero di corsi.",
+                "properties": {
+                  "p_course_count": {
+                    "type": "integer",
+                    "description": "Numero di corsi.",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "get_settings",
+            "description": "Impostazioni globali (es. settimana di prova attiva).",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_settings",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [],
+                "description": "Impostazioni globali (es. settimana di prova attiva).",
+                "properties": {}
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "notify_secretary",
+            "description": "Lascia una nota alla segreteria (reclami, richieste speciali, pagamenti, cose fuori dalla tua competenza). La segreteria la vede e richiama.",
+            "response_timeout_secs": 15,
+            "disable_interruptions": true,
+            "interruption_mode": "disable_during_tool",
+            "force_pre_tool_speech": true,
+            "pre_tool_speech": "force",
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {
+                "apikey": {
+                  "secret_id": "LonXPpKSEPnsMZO7wQyE"
+                },
+                "Authorization": {
+                  "secret_id": "SEGTt3EtkbVRjltAziZK"
+                },
+                "Content-Type": "application/json"
+              },
+              "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_notify_secretary",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "p_message"
+                ],
+                "description": "Lascia una nota alla segreteria (reclami, richieste speciali, pagamenti, cose fuori dalla tua competenza). La segreteria la vede e richiama.",
+                "properties": {
+                  "p_message": {
+                    "type": "string",
+                    "description": "Descrizione chiara del problema/richiesta del chiamante.",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  },
+                  "p_phone_from": {
+                    "type": "string",
+                    "description": "",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "system__caller_id",
+                    "allowed_values_dynamic_variable": "",
+                    "constant_value": "",
+                    "is_omitted": false
+                  }
+                }
+              },
+              "response_body_schema": null,
+              "response_filter": null,
+              "content_type": "application/json",
+              "auth_resolved_params": [],
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "system",
+            "name": "end_call",
+            "description": "Chiude la telefonata dopo una frase di saluto, quando la conversazione è conclusa.",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "interruption_mode": "allow",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
+            "assignments": [],
+            "tool_call_sound": null,
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "params": {
+              "system_tool_type": "end_call"
+            }
+          },
+          {
+            "type": "system",
+            "name": "language_detection",
+            "description": "",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "interruption_mode": "allow",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
+            "assignments": [],
+            "tool_call_sound": null,
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "params": {
+              "system_tool_type": "language_detection"
+            }
+          },
+          {
+            "type": "system",
+            "name": "play_keypad_touch_tone",
+            "description": "",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "interruption_mode": "allow",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
+            "assignments": [],
+            "tool_call_sound": null,
+            "tool_call_sound_behavior": "auto",
+            "tool_error_handling_mode": "auto",
+            "params": {
+              "system_tool_type": "play_keypad_touch_tone",
+              "use_out_of_band_dtmf": true,
+              "suppress_turn_after_dtmf": false
+            }
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "created_at_unix_secs": 1779440002,
+    "updated_at_unix_secs": 1784069850
+  },
+  "platform_settings": {
+    "evaluation": {
+      "criteria": [
+        {
+          "id": "task_completed",
+          "name": "Richiesta gestita",
+          "type": "prompt",
+          "conversation_goal_prompt": "L'assistente ha gestito con successo la richiesta del chiamante (info corsi, prenotazione, disdetta, recupero o lezione di prova) usando i tool appropriati.",
+          "use_knowledge_base": false,
+          "scope": "conversation",
+          "llm": null,
+          "scoring_mode": "binary",
+          "max_score": 100,
+          "score_instructions": null
+        },
+        {
+          "id": "ai_disclosure",
+          "name": "Disclosure AI",
+          "type": "prompt",
+          "conversation_goal_prompt": "L'assistente si è dichiarato assistente vocale automatico nel messaggio iniziale, come richiede l'EU AI Act.",
+          "use_knowledge_base": false,
+          "scope": "conversation",
+          "llm": null,
+          "scoring_mode": "binary",
+          "max_score": 100,
+          "score_instructions": null
+        },
+        {
+          "id": "no_hallucination",
+          "name": "Nessuna invenzione",
+          "type": "prompt",
+          "conversation_goal_prompt": "L'assistente NON ha inventato corsi, orari, prezzi, istruttori o disponibilità: ha chiamato i tool (get_courses, get_pricing, get_faq) prima di rispondere.",
+          "use_knowledge_base": false,
+          "scope": "conversation",
+          "llm": null,
+          "scoring_mode": "binary",
+          "max_score": 100,
+          "score_instructions": null
+        },
+        {
+          "id": "correct_escalation",
+          "name": "Escalation corretta",
+          "type": "prompt",
+          "conversation_goal_prompt": "Se il chiamante aveva un problema fuori competenza o chiedeva una persona, l'assistente ha passato la chiamata o preso nota, invece di improvvisare.",
+          "use_knowledge_base": false,
+          "scope": "conversation",
+          "llm": null,
+          "scoring_mode": "binary",
+          "max_score": 100,
+          "score_instructions": null
+        },
+        {
+          "id": "booking_confirmed_first",
+          "name": "Conferma prima di prenotare",
+          "type": "prompt",
+          "conversation_goal_prompt": "Prima di chiamare create_booking/create_recovery/cancel_booking l'assistente ha confermato ad alta voce corso e data con il chiamante.",
+          "use_knowledge_base": false,
+          "scope": "conversation",
+          "llm": null,
+          "scoring_mode": "binary",
+          "max_score": 100,
+          "score_instructions": null
+        }
+      ]
+    },
+    "widget": {
+      "variant": "full",
+      "placement": "bottom-right",
+      "expandable": "never",
+      "avatar": {
+        "type": "orb",
+        "color_1": "#2792dc",
+        "color_2": "#9ce6e6"
+      },
+      "feedback_mode": "during",
+      "end_feedback": {
+        "type": "rating"
+      },
+      "bg_color": "#ffffff",
+      "text_color": "#000000",
+      "btn_color": "#000000",
+      "btn_text_color": "#ffffff",
+      "border_color": "#e1e1e1",
+      "focus_color": "#000000",
+      "border_radius": null,
+      "btn_radius": null,
+      "action_text": null,
+      "start_call_text": null,
+      "end_call_text": null,
+      "expand_text": null,
+      "listening_text": null,
+      "speaking_text": null,
+      "shareable_page_text": null,
+      "shareable_page_show_terms": true,
+      "terms_text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.",
+      "terms_html": "<h4>Terms and conditions</h4>\n<p>By clicking &quot;Agree,&quot; and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.</p>\n",
+      "terms_key": null,
+      "show_avatar_when_collapsed": false,
+      "disable_banner": false,
+      "override_link": null,
+      "markdown_link_allowed_hosts": [],
+      "markdown_link_include_www": true,
+      "markdown_link_allow_http": true,
+      "mic_muting_enabled": false,
+      "transcript_enabled": false,
+      "text_input_enabled": true,
+      "conversation_mode_toggle_enabled": false,
+      "default_expanded": false,
+      "always_expanded": false,
+      "dismissible": false,
+      "show_agent_status": false,
+      "show_conversation_id": true,
+      "strip_audio_tags": true,
+      "syntax_highlight_theme": null,
+      "text_contents": {
+        "main_label": null,
+        "start_call": null,
+        "start_chat": null,
+        "new_call": null,
+        "end_call": null,
+        "mute_microphone": null,
+        "change_language": null,
+        "collapse": null,
+        "expand": null,
+        "copied": null,
+        "accept_terms": null,
+        "dismiss_terms": null,
+        "listening_status": null,
+        "speaking_status": null,
+        "connecting_status": null,
+        "chatting_status": null,
+        "input_label": null,
+        "input_placeholder": null,
+        "input_placeholder_text_only": null,
+        "input_placeholder_new_conversation": null,
+        "user_ended_conversation": null,
+        "agent_ended_conversation": null,
+        "conversation_id": null,
+        "error_occurred": null,
+        "copy_id": null,
+        "initiate_feedback": null,
+        "request_follow_up_feedback": null,
+        "thanks_for_feedback": null,
+        "thanks_for_feedback_details": null,
+        "follow_up_feedback_placeholder": null,
+        "submit": null,
+        "go_back": null,
+        "send_message": null,
+        "text_mode": null,
+        "voice_mode": null,
+        "switched_to_text_mode": null,
+        "switched_to_voice_mode": null,
+        "copy": null,
+        "download": null,
+        "wrap": null,
+        "agent_working": null,
+        "agent_done": null,
+        "agent_error": null
+      },
+      "styles": {
+        "base": null,
+        "base_hover": null,
+        "base_active": null,
+        "base_border": null,
+        "base_subtle": null,
+        "base_primary": null,
+        "base_error": null,
+        "accent": null,
+        "accent_hover": null,
+        "accent_active": null,
+        "accent_border": null,
+        "accent_subtle": null,
+        "accent_primary": null,
+        "overlay_padding": null,
+        "button_radius": null,
+        "input_radius": null,
+        "bubble_radius": null,
+        "sheet_radius": null,
+        "compact_sheet_radius": null,
+        "dropdown_sheet_radius": null
+      },
+      "language_selector": false,
+      "supports_text_only": true,
+      "custom_avatar_path": null,
+      "language_presets": {
+        "en": {
+          "text_contents": null,
+          "terms_text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy. If you do not wish to have your conversations recorded, please refrain from using this service.",
+          "terms_html": "<h4>Terms and conditions</h4>\n<p>By clicking &quot;Agree,&quot; and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy. If you do not wish to have your conversations recorded, please refrain from using this service.</p>\n",
+          "terms_key": null,
+          "terms_translation": {
+            "source_hash": "{\"termsText\":\"#### Terms and conditions\\n\\nBy clicking \\\"Agree,\\\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\\nIf you do not wish to have your conversations recorded, please refrain from using this service.\",\"language\":\"it\"}",
+            "text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy. If you do not wish to have your conversations recorded, please refrain from using this service."
+          }
+        },
+        "es": {
+          "text_contents": null,
+          "terms_text": "#### Términos y condiciones\n\nAl hacer clic en \"Aceptar\", y cada vez que interactúo con este agente de IA, consiento el registro, almacenamiento y compartición de mis comunicaciones con proveedores de servicios de terceros, y como se describe en la Política de Privacidad. Si no desea que sus conversaciones sean grabadas, por favor absténgase de usar este servicio.",
+          "terms_html": "<h4>Términos y condiciones</h4>\n<p>Al hacer clic en &quot;Aceptar&quot;, y cada vez que interactúo con este agente de IA, consiento el registro, almacenamiento y compartición de mis comunicaciones con proveedores de servicios de terceros, y como se describe en la Política de Privacidad. Si no desea que sus conversaciones sean grabadas, por favor absténgase de usar este servicio.</p>\n",
+          "terms_key": null,
+          "terms_translation": {
+            "source_hash": "{\"termsText\":\"#### Terms and conditions\\n\\nBy clicking \\\"Agree,\\\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\\nIf you do not wish to have your conversations recorded, please refrain from using this service.\",\"language\":\"it\"}",
+            "text": "#### Términos y condiciones\n\nAl hacer clic en \"Aceptar\", y cada vez que interactúo con este agente de IA, consiento el registro, almacenamiento y compartición de mis comunicaciones con proveedores de servicios de terceros, y como se describe en la Política de Privacidad. Si no desea que sus conversaciones sean grabadas, por favor absténgase de usar este servicio."
+          }
+        }
+      }
+    },
+    "data_collection": {},
+    "data_collection_scopes": {},
+    "overrides": {
+      "conversation_config_override": {
+        "asr": {
+          "keywords": false
+        },
+        "turn": {
+          "soft_timeout_config": {
+            "message": false
+          }
+        },
+        "tts": {
+          "model_id": false,
+          "voice_id": false,
+          "stability": false,
+          "speed": false,
+          "similarity_boost": false
+        },
+        "conversation": {
+          "text_only": true
+        },
+        "agent": {
+          "first_message": true,
+          "language": true,
+          "max_conversation_duration_message": false,
+          "prompt": {
+            "prompt": false,
+            "llm": false,
+            "tool_ids": false,
+            "native_mcp_server_ids": false,
+            "knowledge_base": false
+          }
+        }
+      },
+      "custom_llm_extra_body": false,
+      "enable_conversation_initiation_client_data_from_webhook": true,
+      "enable_starting_workflow_node_id_from_client": false
+    },
+    "workspace_overrides": {
+      "conversation_initiation_client_data_webhook": null,
+      "webhooks": {
+        "post_call_webhook_id": null,
+        "events": [
+          "transcript"
+        ],
+        "transcript_format": "json",
+        "send_audio": false
+      }
+    },
+    "testing": {
+      "attached_tests": [],
+      "referenced_tests_ids": []
+    },
+    "archived": false,
+    "guardrails": {
+      "version": "1",
+      "focus": {
+        "is_enabled": true
+      },
+      "prompt_injection": {
+        "is_enabled": true
+      },
+      "content": {
+        "execution_mode": "streaming",
+        "config": {
+          "sexual": {
+            "is_enabled": true,
+            "threshold": "medium"
+          },
+          "violence": {
+            "is_enabled": true,
+            "threshold": "medium"
+          },
+          "harassment": {
+            "is_enabled": true,
+            "threshold": "medium"
+          },
+          "self_harm": {
+            "is_enabled": true,
+            "threshold": "medium"
+          },
+          "profanity": {
+            "is_enabled": true,
+            "threshold": "medium"
+          },
+          "religion_or_politics": {
+            "is_enabled": true,
+            "threshold": "medium"
+          },
+          "medical_and_legal_information": {
+            "is_enabled": true,
+            "threshold": "medium"
+          }
+        },
+        "trigger_action": {
+          "type": "end_call"
+        }
+      },
+      "moderation": null,
+      "custom": {
+        "config": {
+          "configs": []
+        }
+      }
+    },
+    "summary_language": null,
+    "auto_translate_transcript_to_app_language": null,
+    "auth": {
+      "enable_auth": false,
+      "allowlist": [],
+      "require_origin_header": false,
+      "shareable_token": null
+    },
+    "call_limits": {
+      "agent_concurrency_limit": -1,
+      "daily_limit": 100000,
+      "bursting_enabled": true
+    },
+    "ban": null,
+    "smb_metadata": null,
+    "privacy": {
+      "record_voice": true,
+      "retention_days": -1,
+      "delete_transcript_and_pii": false,
+      "delete_audio": false,
+      "apply_to_existing_conversations": false,
+      "zero_retention_mode": false,
+      "conversation_history_redaction": {
+        "enabled": false,
+        "entities": []
+      }
+    },
+    "trust_context": "unknown",
+    "analysis_llm": "gemini-2.5-flash",
+    "topic_discovery": {
+      "enabled": true
+    },
+    "sentiment_analysis": {
+      "enabled": true
+    },
+    "simulation_library": {
+      "enabled": false,
+      "test_ids": []
+    },
+    "alerting": null,
+    "overview_dashboard_template_id": null,
+    "safety": {
+      "is_blocked_ivc": false,
+      "is_blocked_non_ivc": false,
+      "ignore_safety_evaluation": false
+    }
+  },
+  "phone_numbers": [
+    {
+      "phone_number": "+16627056720",
+      "label": "Ritmo Tropicale",
+      "supports_inbound": true,
+      "supports_outbound": true,
+      "phone_number_id": "phnum_7601kxgs5yq9e1ktae51frh2men8",
+      "assigned_agent": {
+        "agent_id": "agent_9001ks7e78grfazrhck2vfmy2kcr",
+        "agent_name": "tropicoqueta",
+        "environment": null,
+        "branch_id": null
+      },
+      "provider": "twilio"
+    }
+  ],
+  "whatsapp_accounts": [],
+  "workflow": {
+    "edges": {},
+    "nodes": {
+      "start_node": {
+        "type": "start",
+        "position": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "edge_order": []
+      }
+    },
+    "prevent_subagent_loops": false
+  },
+  "access_info": {
+    "is_creator": true,
+    "creator_name": "Alberto Di Maria",
+    "creator_email": "ing.albertodimaria@gmail.com",
+    "role": "admin",
+    "anonymous_access_level_override": null,
+    "access_source": "creator"
+  },
+  "tags": [],
+  "version_id": "agtvrsn_6301kxhdk18ne7pvamr279xcx6m8",
+  "branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
+  "main_branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
+  "procedures": {
+    "agtprc_0801ks7e7a0seyy9hmzrhqc49ry8": {
+      "procedure_id": "agtprc_0801ks7e7a0seyy9hmzrhqc49ry8",
+      "version_id": "agtprcv_0501ks7ejy80fhv8ctt70dm9vfnh",
+      "name": "Untitled Procedure",
+      "type": "free_form"
+    }
+  },
+  "trust_context": "unknown"
+}

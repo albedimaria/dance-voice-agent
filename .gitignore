@@ -227,3 +227,6 @@ graphify-out/
 # audio samples (binari, non versionati)
 voice-samples/*.mp3
 voice-samples/*.wav
+
+# Snapshot pre-push dell'agente: la storia vera è git, questi sono usa-e-getta
+agent/backups/
