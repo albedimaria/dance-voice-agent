@@ -1,7 +1,7 @@
 {
   "Tropicoqueta — prolissa": {
-    "id": "test_2001kxh3jsshf0xbp2z93196e068",
-    "hash": "966cc84b0deb"
+    "id": "test_4801kxh669b6fb5twvhwg7df1zht",
+    "hash": "c45d8d894bbc"
   },
   "Tropicoqueta — inventa": {
     "id": "test_2101kxh3jszye5ksvkk3xzdffdy5",
@@ -14,5 +14,13 @@
   "Tropicoqueta — brio": {
     "id": "test_1601kxh3jtamednrf53kazg09gh0",
     "hash": "bd2683636c1e"
+  },
+  "Tropicoqueta — chiamante-noto": {
+    "id": "test_6801kxh5wh4pftkv6rgca21z2vds",
+    "hash": "1038824621a4"
+  },
+  "Tropicoqueta — sei-umana": {
+    "id": "test_1601kxh57p67fthv8gk6c5wvrggf",
+    "hash": "4c4fa350c047"
   }
 }

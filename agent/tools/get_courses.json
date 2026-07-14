@@ -3,7 +3,7 @@
   "tool_config": {
     "type": "webhook",
     "name": "get_courses",
-    "description": "Recupera i corsi attivi. Filtri opzionali. Chiamalo prima di rispondere su corsi/orari.",
+    "description": "Corsi attivi (filtri opzionali). Chiamalo prima di rispondere su corsi, orari, maestri o sedi. Risponde con: total = quanti corsi corrispondono; courses = quelli che puoi dire ad alta voce (se total e maggiore o uguale a 3 ne ricevi UNO solo, il primo della settimana); truncated = true quando gli altri non te li ha dati; available_days / available_levels / available_styles = i valori tra cui far scegliere per restringere. Se truncated e true, di quanti sono e chiedi il filtro: gli altri corsi non li hai.",
     "response_timeout_secs": 15,
     "disable_interruptions": true,
     "interruption_mode": "disable_during_tool",
@@ -34,7 +34,7 @@
       "request_body_schema": {
         "type": "object",
         "required": [],
-        "description": "Recupera i corsi attivi. Filtri opzionali. Chiamalo prima di rispondere su corsi/orari.",
+        "description": "Corsi attivi (filtri opzionali). Chiamalo prima di rispondere su corsi, orari, maestri o sedi. Risponde con: total = quanti corsi corrispondono; courses = quelli che puoi dire ad alta voce (se total e maggiore o uguale a 3 ne ricevi UNO solo, il primo della settimana); truncated = true quando gli altri non te li ha dati; available_days / available_levels / available_styles = i valori tra cui far scegliere per restringere. Se truncated e true, di quanti sono e chiedi il filtro: gli altri corsi non li hai.",
         "properties": {
           "p_style": {
             "type": "string",

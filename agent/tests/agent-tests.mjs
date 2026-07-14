@@ -1,5 +1,19 @@
 // Suite Agent Tests NATIVA per l'agente ConvAI "Tropicoqueta" (Ritmo Tropicale).
 //
+// ⛔ LIMITE DELLA PIATTAFORMA — misurato 2026-07-14, leggere PRIMA di fidarsi di un punteggio.
+// Le `dynamic_variables` dichiarate qui sotto NON arrivano all'agente durante la simulazione.
+// Prova (test canarino, 1 sim): con `student_name: 'Chiara'` iniettato, alla domanda "sai come
+// mi chiamo?" l'agente risponde «No, non so come ti chiami». E non è il webhook conv-init a
+// sovrascriverle: i log della edge function mostrano ZERO chiamate durante le simulazioni.
+// In simulazione l'agente gira sempre coi placeholder di default dell'agente:
+//   caller_known="false" · student_name="" · student_level="" · trial_week_active="false"
+//
+// CONSEGUENZA: ogni condizione che dipende da una variabile (riconoscere il chiamante,
+// annunciare la settimana di prova) qui misura una realtà che non esiste, e il suo verde o
+// rosso è rumore. Quei rami si verificano dove vivono davvero:
+//   - il riconoscimento del chiamante  -> agent/tests/webhook-check.mjs (deterministico, 0 crediti)
+//   - la telefonata vera               -> GET /v1/convai/conversations (transcript reale)
+//
 // ⚠️ SICUREZZA — leggere prima di aggiungere casi:
 // L'agente ha SERVER TOOL che scrivono davvero (`create_booking`, `cancel_booking`,
 // `notify_secretary`). Una simulazione li eseguirebbe SUL DB DELLA SCUOLA e potrebbe
@@ -56,7 +70,10 @@ then ask about bachata, then ask which days. Keep YOUR turns short. ${NO_WRITES}
     vars: { caller_known: 'false', student_name: '', student_id: '', student_level: '', trial_week_active: 'false' },
     conditions: [
       'Almost every single turn of the assistant is at most TWO sentences long. Fail if the assistant repeatedly answers with three or more sentences, or reads out long lists of courses.',
-      'The assistant never ends its turns with filler like "c\'è altro che posso fare per te?", "fammi sapere", "se hai bisogno io sono qui", "magari c\'è qualcosa che ti interessa".',
+      // Precisazione, non sconto: al primo giro il giudice bocciava "che giorno ti verrebbe comodo?"
+      // chiamandolo filler — ma quella è ESATTAMENTE la domanda che gli chiediamo di fare per
+      // restringere la ricerca. Il filler è la chiusura vuota, non la domanda utile.
+      'The assistant never ends its turns with EMPTY filler like "c\'è altro che posso fare per te?", "fammi sapere", "se hai bisogno io sono qui", "magari c\'è qualcosa che ti interessa". A question that narrows the search (e.g. "che giorno ti verrebbe comodo?", "ti interessa quello del giovedì?") is NOT filler: it is the expected behaviour and must NOT count as a failure.',
       'The assistant asks at most ONE question per turn.',
     ],
   },
@@ -72,13 +89,24 @@ Push for exact numbers. ${NO_WRITES} Say goodbye after 6 turns.`,
     ],
   },
   {
+    // NOTA — cosa misura davvero questo caso.
+    // In produzione il nome del chiamante lo dice il WEBHOOK conv-init, che
+    // sovrascrive il first_message ("Ciao Chiara!"): è deterministico, non
+    // dipende dal modello. In simulazione il webhook non gira, quindi il saluto
+    // resta generico: pretendere qui che l'LLM pronunci il nome vuol dire
+    // testare la piattaforma attraverso il modello, e bocciarlo per una cosa
+    // che in produzione è già garantita (prima versione: 0/3, falso negativo).
+    // Quello che resta in mano al modello — e che qui misuriamo — è NON chiedere
+    // a un cliente già riconosciuto chi è, e non rifare la lookup che ha già.
     key: 'chiamante-noto',
     scenario: `You are Chiara, an existing student of the school (intermediate level). You call and just say "ciao, sono io"
-without giving your name, then ask if there is a bachata class on Friday. ${NO_WRITES} Say goodbye after 5 turns.`,
+without giving your name, then ask if there is a bachata class on Friday, and whether you are already booked for it.
+${NO_WRITES} Say goodbye after 5 turns.`,
     vars: { caller_known: 'true', student_name: 'Chiara', student_id: 'stu_123', student_level: 'intermedio', trial_week_active: 'false' },
     conditions: [
-      'The assistant recognised the caller and used her name (Chiara) instead of asking who she is.',
-      'The assistant did NOT ask the caller for her name or surname.',
+      'The assistant did NOT ask the caller for her name or surname, and did not ask who she is: it treated her as already identified.',
+      'The assistant did not call get_student_by_phone or get_student_by_name: it already had the student in context.',
+      'The assistant never claimed the trial week was active and never said any lesson was free (trial_week_active is false).',
     ],
   },
   {
