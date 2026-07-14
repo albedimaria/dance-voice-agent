@@ -61,6 +61,45 @@ const NO_WRITES = `IMPORTANT: never ask to actually book, cancel or move a lesso
 personal details for a booking. You are only asking for information. If the assistant offers to book,
 say you will think about it and change the subject.`;
 
+// ⚠️ NO_WRITES NON BASTA, E LO SO PERCHÉ È SUCCESSO.
+//
+// Una simulazione ESEGUE i server tool per davvero. Chiedere al chiamante finto
+// di non prenotare è una regola scritta a un LLM: obbedienza ~2 volte su 3. Il
+// 2026-07-14 la suite ha lasciato DICIOTTO righe nella coda della segreteria
+// della scuola — "il nuovo studente Marco Bianchi vuole prenotare una prova",
+// "Chiara (stu_123) vuole parlare con una persona" — perché il caso `sei-umana`
+// chiede una persona vera e l'agente, giustamente, ha chiamato notify_secretary.
+// Nessun WhatsApp è partito solo perché quel layer non è collegato: fortuna, non
+// progetto.
+//
+// La piattaforma ha un campo per questo. Si usa il campo.
+// mocking_strategy 'selected' + i tool che scrivono => la simulazione riceve una
+// risposta finta e il DB della scuola non viene mai toccato. Gli altri tool
+// (get_courses, get_pricing, get_faq) restano VERI: è proprio la loro risposta
+// che vogliamo testare.
+const WRITE_TOOLS = [
+  'create_booking', 'cancel_booking', 'create_recovery',
+  'create_trial_session', 'notify_secretary',
+];
+
+const toolIds = async () => {
+  const agent = await el('GET', `/v1/convai/agents/${AGENT}`);
+  const ids = agent.conversation_config.agent.prompt.tool_ids ?? [];
+  const out = [];
+  for (const id of ids) {
+    const t = await el('GET', `/v1/convai/tools/${id}`);
+    if (WRITE_TOOLS.includes(t.tool_config.name)) out.push(id);
+  }
+  if (out.length !== WRITE_TOOLS.length) {
+    throw new Error(
+      `attesi ${WRITE_TOOLS.length} tool di scrittura da mockare, trovati ${out.length}. ` +
+      `Non lancio niente: un tool di scrittura non mockato scrive sul DB della scuola.`,
+    );
+  }
+  return out;
+};
+const MOCKED = await toolIds();
+
 const CASES = [
   {
     key: 'prolissa',
@@ -160,6 +199,14 @@ async function ensureTest(c) {
     simulation_max_turns: 12,
     success_conditions: c.conditions,
     dynamic_variables: c.vars,
+    // I tool che scrivono sul DB della scuola non vengono MAI eseguiti in
+    // simulazione: la piattaforma restituisce una risposta finta. I tool di
+    // lettura restano veri, perché è la loro risposta che stiamo testando.
+    tool_mock_config: {
+      mocking_strategy: 'selected',
+      mocked_tool_ids: MOCKED,
+      fallback_strategy: 'call_real_tool',
+    },
   };
   const h = hash(body);
   if (registry[name]?.hash === h) return registry[name].id;
