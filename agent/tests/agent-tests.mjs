@@ -136,7 +136,11 @@ Be warm and chatty. ${NO_WRITES} Say goodbye after 5 turns.`,
     vars: { caller_known: 'false', student_name: '', student_id: '', student_level: '', trial_week_active: 'true' },
     conditions: [
       'The assistant sounds warm and alive — it REACTS before giving information (e.g. "ah, bachata!", "sì sì, ce l\'abbiamo") rather than answering like a flat switchboard.',
-      'Since the trial week is active, the assistant mentioned on its own that the lesson is free.',
+      // RIMOSSA la condizione "annuncia che la lezione è gratis": in simulazione
+      // trial_week_active vale SEMPRE "false" (le variabili del test non arrivano
+      // all'agente — vedi il cappello di questo file). Il criterio bocciava l'agente
+      // per non aver detto una cosa che, dal suo punto di vista, non era vera.
+      // L'annuncio della settimana di prova si verifica sulla telefonata reale.
       'The assistant did not sound like a call-centre script and did not repeat the same closing formula twice.',
     ],
   },
