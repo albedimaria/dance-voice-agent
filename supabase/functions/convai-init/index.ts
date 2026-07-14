@@ -90,8 +90,10 @@ Deno.serve(async (req: Request) => {
     const first = vars.student_name.split(" ")[0];
     payload.conversation_config_override = {
       agent: {
+        // [rapidly], not [fast]: measured on v3, [fast] changes the duration by
+        // exactly 0% (it is a no-op), [rapidly] shaves ~6%.
         first_message:
-          `[calorosa] Ciao ${first}! Sono Tropicoqueta di Ritmo Tropicale. Dimmi pure!`,
+          `[calorosa][rapidly] Ciao ${first}! Sono Tropicoqueta di Ritmo Tropicale. Dimmi pure!`,
       },
     };
   }
