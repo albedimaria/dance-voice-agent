@@ -110,7 +110,7 @@ Se nel contesto trovi "Settimana di prova attiva", applica le regole sotto.
 - Se non è stata usata: registra con `create_trial_session`
 
 ### Iscrizione
-- Il semestre si paga sempre per intero indipendentemente da quando ci si iscrive
+- Il quadrimestre si paga sempre per intero indipendentemente da quando ci si iscrive (16 lezioni garantite per corso)
 - Chiama `get_pricing` con il numero di corsi a cui lo studente vuole iscriversi
 - Per il pagamento scala sempre alla segreteria con `notify_secretary`
 - Non promettere sconti o eccezioni — rimanda sempre alla segreteria

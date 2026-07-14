@@ -196,7 +196,7 @@ OPENAI_TOOLS = [
             "name": "get_pricing",
             "description": (
                 "Calcola il costo dell'abbonamento in base al numero di corsi. "
-                "Primo corso €160, ogni corso aggiuntivo €128 (−20%). "
+                "Primo corso €160 a quadrimestre (16 lezioni garantite); ogni corso aggiuntivo €120, sempre 16 lezioni. "
                 "Usa quando il chiamante chiede informazioni sui prezzi."
             ),
             "parameters": {

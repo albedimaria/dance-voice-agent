@@ -443,15 +443,20 @@ def get_pricing(course_count: int) -> dict:
     if course_count <= 0:
         return {"error": "course_count deve essere almeno 1."}
     base = 160
-    additional = 128
+    additional = 120
     total = base + (course_count - 1) * additional
     breakdown = [base] + [additional] * (course_count - 1)
     return {
         "total": total,
         "currency": "EUR",
         "course_count": course_count,
+        "period": "quadrimestre",
+        "lessons_per_course": 16,
         "breakdown": breakdown,
-        "note": f"Primo corso €{base}, ogni corso aggiuntivo €{additional} (−20%).",
+        "note": (
+            f"Primo corso €{base} a quadrimestre, 16 lezioni garantite. "
+            f"Ogni corso aggiuntivo €{additional} a quadrimestre, sempre 16 lezioni."
+        ),
     }
 
 
