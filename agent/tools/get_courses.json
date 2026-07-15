@@ -85,6 +85,16 @@
             "allowed_values_dynamic_variable": "",
             "constant_value": "",
             "is_omitted": false
+          },
+          "p_caller_level": {
+            "type": "string",
+            "description": "Livello del CHIAMANTE se riconosciuto (base/intermedio/avanzato). Ordina i corsi di quel livello per primi, senza escludere gli altri. Passalo quando conosci il livello dello studente al telefono.",
+            "enum": null,
+            "is_system_provided": false,
+            "dynamic_variable": "",
+            "allowed_values_dynamic_variable": "",
+            "constant_value": "",
+            "is_omitted": false
           }
         }
       },
@@ -104,8 +114,8 @@
     "access_source": "creator"
   },
   "usage_stats": {
-    "total_calls": 13,
-    "avg_latency_secs": 0.58
+    "total_calls": 20,
+    "avg_latency_secs": 0.53
   },
   "response_mocks": null
 }
