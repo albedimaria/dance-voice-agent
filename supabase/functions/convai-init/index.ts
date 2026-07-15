@@ -5,9 +5,12 @@
 // knows who is on the line when it says hello — no mid-conversation
 // "come ti chiami?", and one fewer tool round-trip in the hot path.
 //
-// This replaces what main.py used to do in the old custom pipeline. After the
-// migration to ConvAI nothing was doing it, which is why the agent kept asking
-// for the caller's name halfway through the conversation.
+// Il nome dell'agente (Karol) vive in UN solo posto: settings.agent_name nel DB.
+// Il webhook lo legge e lo passa come dynamic variable {{agent_name}}, usata sia
+// dal first_message del pannello (chiamanti nuovi) sia dall'override qui sotto
+// (chiamanti riconosciuti). Così un cambio di nome si fa in un punto e vale
+// ovunque — il bug del 2026-07-15 (nome hardcoded nel webhook che ignorava il
+// cambio dal pannello) non si ripete.
 //
 // Auth: ElevenLabs sends the project's anon key as a Bearer token, so the
 // platform's own JWT check gates this function (verify_jwt = true).
@@ -48,14 +51,19 @@ Deno.serve(async (req: Request) => {
     student_level: "",
     caller_known: "false",
     trial_week_active: "false",
+    agent_name: "Karol",
   };
 
   try {
-    // `settings` is a key/value table, not a column-per-flag one.
-    const s = await db("settings?select=value&key=eq.trial_week_active&limit=1");
+    // `settings` is a key/value table: leggiamo in un colpo trial_week_active
+    // (stato prova) e agent_name (fonte unica del nome dell'agente).
+    const s = await db("settings?select=key,value&key=in.(trial_week_active,agent_name)");
     if (s.ok) {
-      const [row] = await s.json();
-      vars.trial_week_active = String(row?.value ?? "false");
+      const rows = await s.json();
+      for (const row of rows) {
+        if (row.key === "trial_week_active") vars.trial_week_active = String(row.value ?? "false");
+        if (row.key === "agent_name" && row.value) vars.agent_name = String(row.value);
+      }
     }
 
     if (callerId) {
@@ -84,18 +92,17 @@ Deno.serve(async (req: Request) => {
     dynamic_variables: vars,
   };
 
-  // Only override the greeting when we actually recognised the caller; the
-  // agent's own first_message already covers the anonymous case.
+  // Chiamante riconosciuto: saluto col suo nome + presentazione PIENA col nome
+  // dell'agente letto da settings. La presentazione piena serve anche a chi è in
+  // rubrica: "Ciao Alberto! Sono Karol" da solo non fa capire chi risponde (il
+  // chiamante chiede "ok, chi sei?"). Il nome (agent_name) non è hardcoded qui:
+  // viene da settings.agent_name, la fonte unica.
   if (vars.caller_known === "true") {
     const first = vars.student_name.split(" ")[0];
     payload.conversation_config_override = {
       agent: {
-        // Il webhook NON ripete il nome dell'agente: quello lo controlla il
-        // first_message del pannello. Se lo ripetessimo qui (hardcoded) un cambio
-        // di nome dal pannello non si vedrebbe per i chiamanti riconosciuti —
-        // esattamente il bug del 2026-07-15 ("cambio il nome e non se lo ricorda").
-        // A un cliente riconosciuto non serve la ripresentazione: ti conosce.
-        first_message: `Ciao ${first}! Dimmi pure!`,
+        first_message:
+          `Ciao ${first}! Sono ${vars.agent_name}, l'assistente automatico di Ritmo Tropicale. Dimmi pure!`,
       },
     };
   }
