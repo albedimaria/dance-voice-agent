@@ -90,11 +90,12 @@ Deno.serve(async (req: Request) => {
     const first = vars.student_name.split(" ")[0];
     payload.conversation_config_override = {
       agent: {
-        // Saluto senza tag audio: Alberto lo vuole sobrio, coerente col saluto
-        // statico dell'agente (anche quello senza tag). Il tono caldo lo danno le
-        // parole, non un'etichetta [calorosa] incollata davanti.
-        first_message:
-          `Ciao ${first}! Sono Tropicoqueta di Ritmo Tropicale. Dimmi pure!`,
+        // Il webhook NON ripete il nome dell'agente: quello lo controlla il
+        // first_message del pannello. Se lo ripetessimo qui (hardcoded) un cambio
+        // di nome dal pannello non si vedrebbe per i chiamanti riconosciuti —
+        // esattamente il bug del 2026-07-15 ("cambio il nome e non se lo ricorda").
+        // A un cliente riconosciuto non serve la ripresentazione: ti conosce.
+        first_message: `Ciao ${first}! Dimmi pure!`,
       },
     };
   }

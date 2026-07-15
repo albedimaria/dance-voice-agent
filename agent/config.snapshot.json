@@ -52,7 +52,7 @@
       "interruption_ignore_term_languages": [],
       "transcribe_on_disabled_interruptions": false,
       "soft_timeout_config": {
-        "timeout_seconds": 3.0,
+        "timeout_seconds": 4.0,
         "message": "aspetta un momento",
         "additional_soft_timeout_messages": [],
         "use_llm_generated_message": false,
@@ -1164,7 +1164,7 @@
   },
   "metadata": {
     "created_at_unix_secs": 1779440002,
-    "updated_at_unix_secs": 1784119938
+    "updated_at_unix_secs": 1784120447
   },
   "platform_settings": {
     "evaluation": {
@@ -1566,7 +1566,7 @@
     "access_source": "creator"
   },
   "tags": [],
-  "version_id": "agtvrsn_6701kxjxbkpkfv892yg82xy3gtf8",
+  "version_id": "agtvrsn_9601kxjxv49fednbxpsqqv3aka3h",
   "branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
   "main_branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
   "procedures": {
