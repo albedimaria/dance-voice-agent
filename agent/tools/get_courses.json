@@ -7,11 +7,11 @@
     "response_timeout_secs": 15,
     "disable_interruptions": true,
     "interruption_mode": "disable_during_tool",
-    "force_pre_tool_speech": true,
-    "pre_tool_speech": "force",
+    "force_pre_tool_speech": false,
+    "pre_tool_speech": "off",
     "assignments": [],
     "tool_call_sound": "typing",
-    "tool_call_sound_behavior": "auto",
+    "tool_call_sound_behavior": "always",
     "tool_error_handling_mode": "auto",
     "dynamic_variables": {
       "dynamic_variable_placeholders": {}
@@ -104,7 +104,7 @@
     "access_source": "creator"
   },
   "usage_stats": {
-    "total_calls": 28,
+    "total_calls": 30,
     "avg_latency_secs": 0.5
   },
   "response_mocks": null
