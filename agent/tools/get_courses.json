@@ -104,7 +104,7 @@
     "access_source": "creator"
   },
   "usage_stats": {
-    "total_calls": 24,
+    "total_calls": 25,
     "avg_latency_secs": 0.51
   },
   "response_mocks": null
