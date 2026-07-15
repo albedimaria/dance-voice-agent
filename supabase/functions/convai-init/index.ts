@@ -90,16 +90,11 @@ Deno.serve(async (req: Request) => {
     const first = vars.student_name.split(" ")[0];
     payload.conversation_config_override = {
       agent: {
-        // [rapidly] PRIMA di tutto, e non e un vezzo: su eleven_v3_conversational
-        // la velocita del parlato e fissa (tts.speed non fa nulla — misurato il
-        // 2026-07-14: 1.05 -> +4,5%, 1.20 -> -2,3%, tutto dentro il rumore).
-        // L'unica leva che sposta davvero la durata e il tag: -9,1%, con tutte le
-        // run col tag sotto tutte quelle senza. Il saluto e l'unico punto in cui
-        // il tag e GARANTITO, perche lo scriviamo noi e non il modello (che nei
-        // turni successivi lo mette una volta su due). Quindi qui non si sbaglia:
-        // ritmo per primo, emozione dopo.
+        // Saluto senza tag audio: Alberto lo vuole sobrio, coerente col saluto
+        // statico dell'agente (anche quello senza tag). Il tono caldo lo danno le
+        // parole, non un'etichetta [calorosa] incollata davanti.
         first_message:
-          `[rapidly][calorosa] Ciao ${first}! Sono Tropicoqueta di Ritmo Tropicale. Dimmi pure!`,
+          `Ciao ${first}! Sono Tropicoqueta di Ritmo Tropicale. Dimmi pure!`,
       },
     };
   }
