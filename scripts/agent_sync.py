@@ -87,9 +87,19 @@ def _prompt_of(cfg: dict) -> str:
 
 
 def _agent_view(cfg: dict) -> dict:
-    """The reviewable slice: what a human should read in a PR."""
-    p = cfg["conversation_config"]["agent"]["prompt"]
-    a = cfg["conversation_config"]["agent"]
+    """The reviewable slice: what a human should read in a PR.
+
+    Deve includere TUTTO ciò che si cambia dal pannello, non solo il prompt.
+    Il 2026-07-15 questa vista non guardava il TTS: Alberto è passato da flash a
+    v3_conversational dal pannello, `diff` non l'ha mostrato, e ho finito per
+    misurare i tag audio sul modello sbagliato. Se un campo lo si può toccare da
+    ElevenLabs, il diff deve vederlo.
+    """
+    cc = cfg["conversation_config"]
+    p = cc["agent"]["prompt"]
+    a = cc["agent"]
+    tts = cc.get("tts", {})
+    turn = cc.get("turn", {})
     return {
         "name": cfg.get("name"),
         "agent_id": cfg.get("agent_id"),
@@ -97,9 +107,31 @@ def _agent_view(cfg: dict) -> dict:
         "temperature": p.get("temperature"),
         "first_message": a.get("first_message"),
         "language": a.get("language"),
+        "language_presets": sorted((cc.get("language_presets") or {}).keys()),
         "dynamic_variable_placeholders": (
             a.get("dynamic_variables", {}).get("dynamic_variable_placeholders", {})
         ),
+        "tts": {
+            # su v3 stability/speed/similarity NON sono configurabili (lo dice il
+            # pannello EL): restano nella vista perché il valore memorizzato si
+            # vede lo stesso, ma non illudersi che facciano effetto.
+            "model_id": tts.get("model_id"),
+            "voice_id": tts.get("voice_id"),
+            "stability": tts.get("stability"),
+            "speed": tts.get("speed"),
+            "similarity_boost": tts.get("similarity_boost"),
+            "expressive_mode": tts.get("expressive_mode"),
+            "suggested_audio_tags": [t.get("tag") for t in (tts.get("suggested_audio_tags") or [])],
+            "pronunciation_dictionaries": [
+                d.get("pronunciation_dictionary_id")
+                for d in (tts.get("pronunciation_dictionary_locators") or [])
+            ],
+            "optimize_streaming_latency": tts.get("optimize_streaming_latency"),
+        },
+        "turn": {
+            "turn_timeout": turn.get("turn_timeout"),
+            "soft_timeout": turn.get("soft_timeout_config"),
+        },
         "tools": sorted(t["tool_config"]["name"] for t in _cached_tools()),
         "prompt_chars": len(p.get("prompt", "")),
     }

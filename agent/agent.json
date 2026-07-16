@@ -1,10 +1,14 @@
 {
   "name": "tropicoqueta",
   "agent_id": "agent_9001ks7e78grfazrhck2vfmy2kcr",
-  "llm": "qwen35-397b-a17b",
+  "llm": "qwen36-35b-a3b",
   "temperature": 0.0,
-  "first_message": "Ciao! Sono {{agent_name}}, l'assistente automatico di Ritmo Tropicale. Dimmi pure!",
+  "first_message": "[fast]Ciao! Sono {{agent_name}}, l'assistente automatico di Ritmo Tropicale. Dimmi pure! [clears throat]",
   "language": "it",
+  "language_presets": [
+    "en",
+    "es"
+  ],
   "dynamic_variable_placeholders": {
     "student_name": "",
     "student_id": "",
@@ -12,6 +16,41 @@
     "caller_known": "false",
     "trial_week_active": "false",
     "agent_name": "Karol"
+  },
+  "tts": {
+    "model_id": "eleven_v3_conversational",
+    "voice_id": "QITiGyM4owEZrBEf0QV8",
+    "stability": 0.3,
+    "speed": 1.03,
+    "similarity_boost": 0.8,
+    "expressive_mode": true,
+    "suggested_audio_tags": [
+      "Con empatia",
+      "Calorosamente",
+      "Con sicurezza",
+      "Con pazienza",
+      "Con entusiasmo",
+      "Ridacchia"
+    ],
+    "pronunciation_dictionaries": [
+      "1QVkfR4ids8tjDohIirW"
+    ],
+    "optimize_streaming_latency": 0
+  },
+  "turn": {
+    "turn_timeout": 4.0,
+    "soft_timeout": {
+      "timeout_seconds": 2.0,
+      "message": "un momento...",
+      "additional_soft_timeout_messages": [
+        "un attimo...",
+        "vediamo..."
+      ],
+      "use_llm_generated_message": false,
+      "randomize_fillers": true,
+      "max_soft_timeouts_per_generation": 3,
+      "llm_generated_message_prompt_override": null
+    }
   },
   "tools": [
     "cancel_booking",
