@@ -3,7 +3,7 @@
   "agent_id": "agent_9001ks7e78grfazrhck2vfmy2kcr",
   "llm": "qwen36-35b-a3b",
   "temperature": 0.0,
-  "first_message": "[fast]Ciao! Sono {{agent_name}}, l'assistente automatico di Ritmo Tropicale. Dimmi pure! [clears throat]",
+  "first_message": "[rapidly]Ciao! Sono {{agent_name}}, l'assistente automatico di Ritmo Tropicale. Dimmi pure! [clears throat]",
   "language": "it",
   "language_presets": [
     "en",
@@ -40,15 +40,12 @@
   "turn": {
     "turn_timeout": 4.0,
     "soft_timeout": {
-      "timeout_seconds": 2.0,
+      "timeout_seconds": 3.0,
       "message": "un momento...",
-      "additional_soft_timeout_messages": [
-        "un attimo...",
-        "vediamo..."
-      ],
+      "additional_soft_timeout_messages": [],
       "use_llm_generated_message": false,
-      "randomize_fillers": true,
-      "max_soft_timeouts_per_generation": 3,
+      "randomize_fillers": false,
+      "max_soft_timeouts_per_generation": 1,
       "llm_generated_message_prompt_override": null
     }
   },

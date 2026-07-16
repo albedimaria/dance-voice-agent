@@ -52,15 +52,12 @@
       "interruption_ignore_term_languages": [],
       "transcribe_on_disabled_interruptions": false,
       "soft_timeout_config": {
-        "timeout_seconds": 2.0,
+        "timeout_seconds": 3.0,
         "message": "un momento...",
-        "additional_soft_timeout_messages": [
-          "un attimo...",
-          "vediamo..."
-        ],
+        "additional_soft_timeout_messages": [],
         "use_llm_generated_message": false,
-        "randomize_fillers": true,
-        "max_soft_timeouts_per_generation": 3,
+        "randomize_fillers": false,
+        "max_soft_timeouts_per_generation": 1,
         "llm_generated_message_prompt_override": null
       }
     },
@@ -189,7 +186,7 @@
       "background_voice_detection": false
     },
     "agent": {
-      "first_message": "[fast]Ciao! Sono {{agent_name}}, l'assistente automatico di Ritmo Tropicale. Dimmi pure! [clears throat]",
+      "first_message": "[rapidly]Ciao! Sono {{agent_name}}, l'assistente automatico di Ritmo Tropicale. Dimmi pure! [clears throat]",
       "language": "it",
       "hinglish_mode": false,
       "dynamic_variables": {
@@ -1193,7 +1190,7 @@
   },
   "metadata": {
     "created_at_unix_secs": 1779440002,
-    "updated_at_unix_secs": 1784197872
+    "updated_at_unix_secs": 1784198489
   },
   "platform_settings": {
     "evaluation": {
@@ -1595,7 +1592,7 @@
     "access_source": "creator"
   },
   "tags": [],
-  "version_id": "agtvrsn_8901kxn7nz6xffare70wgjp2ggq0",
+  "version_id": "agtvrsn_4801kxn88sk9fbwr805apv2gd9km",
   "branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
   "main_branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
   "procedures": {
