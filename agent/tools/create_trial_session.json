@@ -27,18 +27,21 @@
         },
         "Content-Type": "application/json"
       },
+      "kind": "webhook",
       "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_create_trial_session",
       "method": "POST",
       "path_params_schema": {},
       "query_params_schema": null,
       "request_body_schema": {
+        "description": "Registra una lezione di prova.",
+        "dynamic_variable": "",
+        "is_omitted": false,
         "type": "object",
         "required": [
           "p_student_id",
           "p_course_id",
           "p_date"
         ],
-        "description": "Registra una lezione di prova.",
         "properties": {
           "p_student_id": {
             "type": "string",
@@ -46,6 +49,7 @@
             "enum": null,
             "is_system_provided": false,
             "dynamic_variable": "",
+            "allowed_values": null,
             "allowed_values_dynamic_variable": "",
             "constant_value": "",
             "is_omitted": false
@@ -56,6 +60,7 @@
             "enum": null,
             "is_system_provided": false,
             "dynamic_variable": "",
+            "allowed_values": null,
             "allowed_values_dynamic_variable": "",
             "constant_value": "",
             "is_omitted": false
@@ -66,6 +71,7 @@
             "enum": null,
             "is_system_provided": false,
             "dynamic_variable": "",
+            "allowed_values": null,
             "allowed_values_dynamic_variable": "",
             "constant_value": "",
             "is_omitted": false
@@ -76,8 +82,11 @@
       "response_filter": null,
       "content_type": "application/json",
       "auth_resolved_params": [],
-      "auth_connection": null
-    }
+      "auth_connection": null,
+      "mtls_auth_connection": null
+    },
+    "follow_redirects": false,
+    "follow_redirects_allowed_domains": []
   },
   "access_info": {
     "is_creator": true,

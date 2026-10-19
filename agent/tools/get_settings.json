@@ -27,22 +27,28 @@
         },
         "Content-Type": "application/json"
       },
+      "kind": "webhook",
       "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_settings",
       "method": "POST",
       "path_params_schema": {},
       "query_params_schema": null,
       "request_body_schema": {
+        "description": "Impostazioni globali (es. settimana di prova attiva).",
+        "dynamic_variable": "",
+        "is_omitted": false,
         "type": "object",
         "required": [],
-        "description": "Impostazioni globali (es. settimana di prova attiva).",
         "properties": {}
       },
       "response_body_schema": null,
       "response_filter": null,
       "content_type": "application/json",
       "auth_resolved_params": [],
-      "auth_connection": null
-    }
+      "auth_connection": null,
+      "mtls_auth_connection": null
+    },
+    "follow_redirects": false,
+    "follow_redirects_allowed_domains": []
   },
   "access_info": {
     "is_creator": true,

@@ -27,14 +27,17 @@
         },
         "Content-Type": "application/json"
       },
+      "kind": "webhook",
       "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_courses",
       "method": "POST",
       "path_params_schema": {},
       "query_params_schema": null,
       "request_body_schema": {
+        "description": "Corsi attivi (filtri opzionali). Chiamalo prima di rispondere su corsi, orari, maestri o sedi. Risponde con: total = quanti corsi corrispondono; courses = quelli che puoi dire ad alta voce (se total e maggiore o uguale a 3 ne ricevi UNO solo, il primo della settimana); truncated = true quando gli altri non te li ha dati; available_days / available_levels / available_styles = i valori tra cui far scegliere per restringere. Se truncated e true, di quanti sono e chiedi il filtro: gli altri corsi non li hai.",
+        "dynamic_variable": "",
+        "is_omitted": false,
         "type": "object",
         "required": [],
-        "description": "Corsi attivi (filtri opzionali). Chiamalo prima di rispondere su corsi, orari, maestri o sedi. Risponde con: total = quanti corsi corrispondono; courses = quelli che puoi dire ad alta voce (se total e maggiore o uguale a 3 ne ricevi UNO solo, il primo della settimana); truncated = true quando gli altri non te li ha dati; available_days / available_levels / available_styles = i valori tra cui far scegliere per restringere. Se truncated e true, di quanti sono e chiedi il filtro: gli altri corsi non li hai.",
         "properties": {
           "p_style": {
             "type": "string",
@@ -42,6 +45,7 @@
             "enum": null,
             "is_system_provided": false,
             "dynamic_variable": "",
+            "allowed_values": null,
             "allowed_values_dynamic_variable": "",
             "constant_value": "",
             "is_omitted": false
@@ -52,6 +56,7 @@
             "enum": null,
             "is_system_provided": false,
             "dynamic_variable": "",
+            "allowed_values": null,
             "allowed_values_dynamic_variable": "",
             "constant_value": "",
             "is_omitted": false
@@ -62,6 +67,7 @@
             "enum": null,
             "is_system_provided": false,
             "dynamic_variable": "",
+            "allowed_values": null,
             "allowed_values_dynamic_variable": "",
             "constant_value": "",
             "is_omitted": false
@@ -72,6 +78,7 @@
             "enum": null,
             "is_system_provided": false,
             "dynamic_variable": "",
+            "allowed_values": null,
             "allowed_values_dynamic_variable": "",
             "constant_value": "",
             "is_omitted": false
@@ -82,6 +89,7 @@
             "enum": null,
             "is_system_provided": false,
             "dynamic_variable": "",
+            "allowed_values": null,
             "allowed_values_dynamic_variable": "",
             "constant_value": "",
             "is_omitted": false
@@ -92,8 +100,11 @@
       "response_filter": null,
       "content_type": "application/json",
       "auth_resolved_params": [],
-      "auth_connection": null
-    }
+      "auth_connection": null,
+      "mtls_auth_connection": null
+    },
+    "follow_redirects": false,
+    "follow_redirects_allowed_domains": []
   },
   "access_info": {
     "is_creator": true,

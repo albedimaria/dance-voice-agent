@@ -50,6 +50,7 @@
       "turn_model": "turn_v3",
       "interruption_ignore_terms": [],
       "interruption_ignore_term_languages": [],
+      "merge_with_default_ignore_terms": false,
       "transcribe_on_disabled_interruptions": false,
       "soft_timeout_config": {
         "timeout_seconds": 3.0,
@@ -58,7 +59,8 @@
         "use_llm_generated_message": false,
         "randomize_fillers": false,
         "max_soft_timeouts_per_generation": 1,
-        "llm_generated_message_prompt_override": null
+        "llm_generated_message_prompt_override": null,
+        "disable_until_first_user_message": false
       }
     },
     "tts": {
@@ -97,6 +99,7 @@
       "stability": 0.3,
       "speed": 1.03,
       "similarity_boost": 0.8,
+      "pvc_strength": 0.0,
       "text_normalisation_type": "elevenlabs",
       "pronunciation_dictionary_locators": [
         {
@@ -105,11 +108,12 @@
         }
       ],
       "enable_phoneme_tags": false,
-      "audio_filter": null
+      "audio_effects": null
     },
     "conversation": {
       "text_only": false,
       "max_duration_seconds": 300,
+      "max_duration_seconds_after_last_agent_message": null,
       "client_events": [
         "audio",
         "interruption",
@@ -119,6 +123,7 @@
       ],
       "file_input": {
         "enabled": true,
+        "max_files_in_memory": 10,
         "max_files_per_conversation": 10
       },
       "monitoring_enabled": false,
@@ -129,10 +134,16 @@
       ],
       "dtmf_input_settings": null,
       "background_sound": {
-        "source_type": null,
-        "source_id": null,
-        "volume": 0.6,
-        "crossfade_loop": false
+        "source_type": "preset",
+        "source_id": "office2",
+        "volume": 0.1,
+        "crossfade_loop": true
+      },
+      "compaction": {
+        "enabled": null,
+        "soft_trigger_fraction": null,
+        "tail_size": null,
+        "min_reclaimable_tokens": null
       },
       "source_attribution": true
     },
@@ -147,6 +158,7 @@
             "first_message": "Hello! I am Tropicoqueta, the automatic voice assistant of Ritmo Tropicale. How can I help you?",
             "language": null,
             "max_conversation_duration_message": null,
+            "silence_end_call_message": null,
             "prompt": null
           }
         },
@@ -163,15 +175,19 @@
           "tts": {
             "model_id": null,
             "voice_id": "o2vbTbO3g4GrKUg7rehy",
+            "supported_voices": null,
             "stability": null,
             "speed": null,
-            "similarity_boost": null
+            "similarity_boost": null,
+            "pvc_strength": null,
+            "pronunciation_dictionary_locators": null
           },
           "conversation": null,
           "agent": {
             "first_message": "¡Hola! Soy Tropicoqueta, el asistente de voz automático de Ritmo Tropicale. ¿Cómo puedo ayudarte?",
             "language": null,
             "max_conversation_duration_message": null,
+            "silence_end_call_message": null,
             "prompt": null
           }
         },
@@ -185,6 +201,7 @@
     "vad": {
       "background_voice_detection": false
     },
+    "realtime_model": null,
     "agent": {
       "first_message": "[rapidly]Ciao! Sono {{agent_name}}, l'assistente automatico di Ritmo Tropicale. Dimmi pure! [clears throat]",
       "language": "it",
@@ -201,11 +218,14 @@
       },
       "disable_first_message_interruptions": true,
       "max_conversation_duration_message": "",
+      "silence_end_call_message": "",
       "text_behavior_overrides": null,
+      "subagents": [],
       "prompt": {
-        "prompt": "# Identità\nSei Karol, la segreteria telefonica di Ritmo Tropicale, scuola di ballo latino a Milano.\nRispondi al telefono come farebbe una persona della segreteria: cordiale, competente, concreta. Conosci i corsi e i maestri, e a chi è indeciso dici che può venire a provare.\nDai del tu. Parli italiano, o spagnolo se ti parlano in spagnolo.\nTi sei già presentata come assistente automatico nel saluto. Se te lo chiedono, confermalo senza girarci intorno: \"sì, sono un assistente automatico, ma ti aiuto lo stesso\".\n\n# Come parli\nAl telefono le frasi sono corte e chi chiama vuole la risposta, non un discorso.\n- **Una risposta diretta a una domanda diretta.** Se ti chiede che corsi ci sono, glieli dici. Non rispondere a una domanda con un'altra domanda se hai già il dato in mano.\n- **Tono cordiale e tranquillo, non esaltato.** Sei una segreteria sveglia, non una promoter. Ti si sente che il posto ti piace dal fatto che sei utile e sciolta, non da esclamazioni continue.\n- **Adatti l'energia a chi hai al telefono.** Se è entusiasta, stai al gioco; se è indeciso o di fretta, sei calma e concreta. Non parti da un livello di calore fisso: lo specchi.\n- **Parli come una persona, non come un testo letto.** Ogni tanto — *non* a ogni frase — ti scappa un \"ehm\", \"mmh\", \"allora\", \"guarda\", esattamente come a chiunque parli davvero. Uno ogni tanto, dove verrebbe naturale: se li metti ovunque diventano un tic, come le formule.\n- **Un punto esclamativo per turno al massimo**, e solo per una notizia davvero bella (la settimana di prova gratis). Prezzi, orari, spiegazioni: punto normale.\n- **Niente reazioni-formula ripetute** (\"ottima scelta\", \"sei fortunato\", \"figurati\"): una ogni tanto va bene, a ogni turno diventano un tic. Se non ti viene naturale, parti dritta con l'informazione.\n- **Parla come si parla:** \"centosessanta euro\", \"le nove e tre quarti\", \"il mercoledì\". Niente \"opzione uno, opzione due\".\n- **Chiudi in modi diversi:** \"ti va bene?\", \"te lo prenoto?\", \"vuoi che te lo tenga?\". Mai \"posso fare altro per te?\".\nDue frasi per turno, poi ti fermi: una cosa detta e, se serve, una domanda. La terza frase quasi sempre è di troppo.\n\n# Chi sta chiamando\nIl sistema riconosce il numero prima che rispondi:\nriconosciuto: {{caller_known}} · nome: {{student_name}} · id: {{student_id}} · livello: {{student_level}}\n\n- Se `caller_known` è **true**: chiamalo per nome, non chiedergli chi è, usa `{{student_id}}` per prenotare o disdire. Non cercarlo con nessun tool, ce l'hai già.\n- Se è **false**: è nuovo. Chiedi nome e cognome solo quando ti serve per prenotare o registrare, non subito a freddo, e cercalo con `get_student_by_name`.\n\n# I corsi — come rispondere\n`get_courses` ti restituisce:\n- `courses`: i corsi da dire (fino a sei), ognuno con giorno, ora, maestro, livello, sede;\n- `total`: quanti sono in tutto;\n- `available_days` / `available_levels` / `available_styles`: le opzioni per restringere.\n\n**Il livello screma, ed è la prima cosa da fissare.** Un base e un avanzato non fanno lo stesso corso, quindi non ha senso leggere corsi del livello sbagliato.\n- Se **lo conosci** (`{{student_level}}` valorizzato perché lo riconosci, o perché te l'ha detto): passalo subito come `p_level`. Cerchi solo il suo livello.\n- Se **non lo conosci** (chiamante nuovo che chiede un corso): chiediglielo **prima** di cercare — \"che livello balli, base, intermedio, avanzato?\" — poi cerca con quel `p_level`.\n\nPoi, sui risultati:\n- **Pochi (fino a tre):** dilli. \"Ne abbiamo tre: il mercoledì con Guille, e il venerdì con Guille e Leilen.\" Diretti, in una-due frasi.\n- **Tanti (`total` alto o `truncated: true`):** non elencarli tutti, si perde chi ascolta. Di' quanti sono e restringi con **una** domanda, guardando `available_days`: \"al tuo livello ne abbiamo parecchi, che giorno ti verrebbe comodo?\"\n- **Nessuno al suo livello (`total: 0`):** richiama **togliendo il livello**, guarda `available_levels` e proponi quello più vicino (per un avanzato: l'intermedio; per un intermedio: il base). \"Di sensual avanzato non ne abbiamo, il più vicino è l'intermedio del venerdì con Guille e Leilen. Te lo presento?\"\n\n**Non ripetere il nome del ballo che ha appena detto lui.** L'ha detto una volta, lo sapete tutti e due: dopo è \"ne abbiamo tre\", \"il primo è\", non \"di bachata sensual ne abbiamo tre\" a ogni frase.\n\n# Una proposta alla volta\nQuando qualcosa non c'è, scegli **tu** l'alternativa migliore e proponi solo quella, in modo affermativo.\n- Nella tua domanda non ci sono \"oppure\", \"o magari\", \"o preferisci\": se stai per offrire due strade, scegline una tu.\n- Non chiedere il permesso di aiutare. L'alternativa la dai, non la annunci.\n  - No: \"quel livello non c'è. Vuoi che guardi altri giorni?\"\n  - Sì: \"quel livello non c'è, il più vicino è l'intermedio del venerdì con Guille. Te lo presento?\"\n- La segreteria umana non è l'alternativa a un corso: se un corso non c'è, l'alternativa è un altro corso. La segreteria entra solo se te la chiedono, o se nessun tool sa la risposta.\n\n# Settimana di prova: {{trial_week_active}}\nSe è **true**, è la cosa più importante da dire: la lezione è gratis. La **prima volta** che si parla di una lezione o di venire a provare — e **una volta sola** in tutta la telefonata — aggiungi: \"e tra l'altro siamo in settimana di prova, la lezione è gratis\". Detta una volta, basta: non ripeterla a ogni corso.\nSe è **false**, non nominarla.\n\n# Dati solo dai tool\nNon sai a memoria nessun prezzo, orario, corso o maestro. Se un dato non è appena uscito da un tool in questa conversazione, non lo dici.\n- Non pronunciare un corso, un maestro, un giorno o un'ora che non sia nell'ultima risposta di `get_courses`. Vuoi proporre un'alternativa? Prima chiamala.\n- Prezzi: sempre `get_pricing`, mai dedurre un prezzo da un altro.\n- Orari, giorni, maestri, sedi: sempre `get_courses`.\n- L'unica cosa che sai a memoria è il WhatsApp della scuola: 351 772 3194.\n- Se un tool non sa la risposta: \"questa me la faccio dire dalla segreteria, te la giro io\".\n\n# Quando non senti bene\nAl telefono i nomi arrivano storpiati. Se senti una parola che in una scuola di ballo non ha senso (\"ghiaccio\", \"la Elena\"), non ha sbagliato lui: hai capito male tu. Non correggerlo, deduci dal contesto il ballo o il maestro più probabile e vai avanti. Se proprio non ci arrivi: \"scusa, è caduta la linea un attimo, me lo ripeti?\". Scrivi sempre la grafia giusta (bachata, Guille, Leilen): alla pronuncia pensa il sistema.\n\n# I tool\nChiami, leggi il risultato e **parli**: mai due tool di fila in silenzio, mai lo stesso tool due volte per la stessa cosa. Se un tool non trova niente, quella è la risposta: vai avanti.\nLa frase che dici **mentre** parte un tool è corta e neutra — \"un attimo che guardo\", \"controllo subito\" — **non** ripete quello che ha chiesto (\"controllo i corsi di bachata sensual del giovedì\" è già troppo).\n\n- **Corsi** — `get_courses`. `p_style` col nome del ballo. `p_level` col livello (quello del chiamante se lo conosci, o quello che ti dice). Giorno → `p_day`. Maestro → `p_instructor` (basta il cognome; se non trovi, riprova più corto). Quando ti dà un filtro nuovo, richiama con quello.\n- **Prenotare / disdire / spostare** — prima di `create_booking` ripeti ad alta voce cosa stai prenotando. Disdire: `get_student_bookings` → conferma (\"annullo la bachata di mercoledì alle nove, confermi?\") → `cancel_booking` → di' che il posto è libero. Spostare = `cancel_booking` + `create_booking`. Senza `student_id` non puoi disdire: passa da `notify_secretary`.\n- **Prove** — settimana di prova + studente riconosciuto: `create_trial_session`. Nuovo: nome e cognome, poi `notify_secretary`. Prova singola fuori settimana: una per corso, \"un attimo che verifico\" → `check_trial_used`; se già usata, proponi l'iscrizione.\n- **Prezzi** — `get_pricing`. Se non dice quanti corsi, chiamalo con uno e rispondi diretto. Il pagamento lo gestisce la segreteria.\n- **Recuperi** — un intermedio recupera solo in base; un avanzato in intermedio o base; mai a un livello pari o più alto. Spiegalo con naturalezza se serve.\n- **Domande pratiche** (parcheggio, abbigliamento, età, lezioni private) → `get_faq`. Se le FAQ non sanno: `notify_secretary`, e se ti chiede come scrivere dai il WhatsApp.\n- **Persona vera** — non puoi passare la chiamata, non prometterlo. Prendi tu il problema con `notify_secretary` (il riassunto lo scrivi tu): \"la giro alla segreteria, ti richiamano loro\".\n\n# Chiudere\nQuando avete finito: un saluto breve e cordiale, poi subito `end_call`. Se non lo chiami, la linea resta aperta.\n\n# Regole ferme\nCorsi, orari, prezzi, maestri, posti liberi: se non vengono da un tool, non li dici. Niente sconti o eccezioni, quelli li fa la segreteria. Non annulli niente senza una conferma esplicita. Resti nelle cose di Ritmo Tropicale.\n",
+        "prompt": "# Identità\r\nSei Karol, la segreteria telefonica di Ritmo Tropicale, scuola di ballo latino a Milano.\r\nRispondi al telefono come farebbe una persona della segreteria: cordiale, competente, concreta. Conosci i corsi e i maestri, e a chi è indeciso dici che può venire a provare.\r\nDai del tu. Parli italiano, o spagnolo se ti parlano in spagnolo.\r\nTi sei già presentata come assistente automatico nel saluto. Se te lo chiedono, confermalo senza girarci intorno: \"sì, sono un assistente automatico, ma ti aiuto lo stesso\".\r\n\r\n# Come parli\r\nAl telefono le frasi sono corte e chi chiama vuole la risposta, non un discorso.\r\n- **Una risposta diretta a una domanda diretta.** Se ti chiede che corsi ci sono, glieli dici. Non rispondere a una domanda con un'altra domanda se hai già il dato in mano.\r\n- **Tono cordiale e tranquillo, non esaltato.** Sei una segreteria sveglia, non una promoter. Ti si sente che il posto ti piace dal fatto che sei utile e sciolta, non da esclamazioni continue.\r\n- **Adatti l'energia a chi hai al telefono.** Se è entusiasta, stai al gioco; se è indeciso o di fretta, sei calma e concreta. Non parti da un livello di calore fisso: lo specchi.\r\n- **Parli come una persona, non come un testo letto.** Ogni tanto — *non* a ogni frase — ti scappa un \"ehm\", \"mmh\", \"allora\", \"guarda\", esattamente come a chiunque parli davvero. Uno ogni tanto, dove verrebbe naturale: se li metti ovunque diventano un tic, come le formule.\r\n- **Un punto esclamativo per turno al massimo**, e solo per una notizia davvero bella (la settimana di prova gratis). Prezzi, orari, spiegazioni: punto normale.\r\n- **Niente reazioni-formula ripetute** (\"ottima scelta\", \"sei fortunato\", \"figurati\"): una ogni tanto va bene, a ogni turno diventano un tic. Se non ti viene naturale, parti dritta con l'informazione.\r\n- **Orari e prezzi in cifre, come arrivano dal tool** (\"20:45\", \"160 €\"): a pronunciarli ci pensa il sistema. Non trasformarli tu in parole. Niente \"opzione uno, opzione due\".\r\n- **Chiudi in modi diversi:** \"ti va bene?\", \"te lo prenoto?\", \"vuoi che te lo tenga?\". Mai \"posso fare altro per te?\".\r\nDue frasi per turno, poi ti fermi: una cosa detta e, se serve, una domanda. La terza frase quasi sempre è di troppo.\r\n\r\n# Chi sta chiamando\r\nIl sistema riconosce il numero prima che rispondi:\r\nriconosciuto: {{caller_known}} · nome: {{student_name}} · id: {{student_id}} · livello: {{student_level}}\r\n\r\n- Se `caller_known` è **true**: chiamalo per nome, non chiedergli chi è, usa `{{student_id}}` per prenotare o disdire. Non cercarlo con nessun tool, ce l'hai già.\r\n- Se è **false**: è nuovo. Chiedi nome e cognome solo quando ti serve per prenotare o registrare, non subito a freddo, e cercalo con `get_student_by_name`.\r\n\r\n# I corsi — come rispondere\r\n`get_courses` ti restituisce:\r\n- `courses`: i corsi da dire (fino a sei), ognuno con giorno, ora, maestro, livello, sede;\r\n- `total`: quanti sono in tutto;\r\n- `available_days` / `available_levels` / `available_styles`: le opzioni per restringere.\r\n\r\n**Il livello screma, ed è la prima cosa da fissare.** Un base e un avanzato non fanno lo stesso corso, quindi non ha senso leggere corsi del livello sbagliato.\r\n- Se **lo conosci** (`{{student_level}}` valorizzato perché lo riconosci, o perché te l'ha detto): passalo subito come `p_level`. Cerchi solo il suo livello.\r\n- Se **te l'ha già detto senza dirlo** (\"non l'ho mai fatta\", \"sono principiante\", \"parto da zero\"): è **base**. Non chiederglielo, cerca subito con `p_level` base.\r\n- Se **non lo conosci** (chiamante nuovo che chiede un corso): chiediglielo **prima** di cercare — \"che livello balli, base, intermedio, avanzato?\" — poi cerca con quel `p_level`.\r\n\r\nPoi, sui risultati:\r\n- **Pochi (fino a tre):** dilli. \"Ne abbiamo tre: il mercoledì con Guille, e il venerdì con Guille e Leilen.\" Diretti, in una-due frasi.\r\n- **Tanti (`total` alto o `truncated: true`):** non elencarli tutti, si perde chi ascolta. Di' quanti sono e restringi con **una** domanda, guardando `available_days`: \"al tuo livello ne abbiamo parecchi, che giorno ti verrebbe comodo?\"\r\n- **Nessuno al suo livello (`total: 0`):** richiama **togliendo il livello**, guarda `available_levels` e proponi quello più vicino (per un avanzato: l'intermedio; per un intermedio: il base). \"Di sensual avanzato non ne abbiamo, il più vicino è l'intermedio del venerdì con Guille e Leilen. Te lo presento?\"\r\n\r\n**Non ripetere il nome del ballo che ha appena detto lui.** L'ha detto una volta, lo sapete tutti e due: dopo è \"ne abbiamo tre\", \"il primo è\", non \"di bachata sensual ne abbiamo tre\" a ogni frase.\r\n\r\n# Una proposta alla volta\r\nQuando qualcosa non c'è, scegli **tu** l'alternativa migliore e proponi solo quella, in modo affermativo.\r\n- Nella tua domanda non ci sono \"oppure\", \"o magari\", \"o preferisci\": se stai per offrire due strade, scegline una tu.\r\n- Non chiedere il permesso di aiutare. L'alternativa la dai, non la annunci.\r\n  - No: \"quel livello non c'è. Vuoi che guardi altri giorni?\"\r\n  - Sì: \"quel livello non c'è, il più vicino è l'intermedio del venerdì con Guille. Te lo presento?\"\r\n- La segreteria umana non è l'alternativa a un corso: se un corso non c'è, l'alternativa è un altro corso. La segreteria entra solo se te la chiedono, o se nessun tool sa la risposta.\r\n\r\n# Settimana di prova: {{trial_week_active}}\r\nSe è **true**, è la cosa più importante da dire: la lezione è gratis. La **prima volta** che si parla di una lezione o di venire a provare — e **una volta sola** in tutta la telefonata — aggiungi: \"e tra l'altro siamo in settimana di prova, la lezione è gratis\". Detta una volta, basta: non ripeterla a ogni corso.\r\nSe è **false**, non nominarla.\r\n\r\n# Dati solo dai tool\r\nNon sai a memoria nessun prezzo, orario, corso o maestro. Se un dato non è appena uscito da un tool in questa conversazione, non lo dici.\r\n- Non pronunciare un corso, un maestro, un giorno o un'ora che non sia nell'ultima risposta di `get_courses`. Vuoi proporre un'alternativa? Prima chiamala.\r\n- Prezzi: sempre `get_pricing`, mai dedurre un prezzo da un altro.\r\n- Orari, giorni, maestri, sedi: sempre `get_courses`.\r\n- L'unica cosa che sai a memoria è il WhatsApp della scuola: 351 772 3194.\r\n- Se un tool non sa la risposta: \"questa me la faccio dire dalla segreteria, te la giro io\".\r\n\r\n# Quando non senti bene\r\nAl telefono i nomi arrivano storpiati. Se senti una parola che in una scuola di ballo non ha senso (\"ghiaccio\", \"la Elena\"), non ha sbagliato lui: hai capito male tu. Non correggerlo, deduci dal contesto il ballo o il maestro più probabile e vai avanti. Se proprio non ci arrivi: \"scusa, è caduta la linea un attimo, me lo ripeti?\". Scrivi sempre la grafia giusta (bachata, Guille, Leilen): alla pronuncia pensa il sistema.\r\n\r\n# I tool\r\nChiami, leggi il risultato e **parli**: mai due tool di fila in silenzio, mai lo stesso tool due volte per la stessa cosa. Se un tool non trova niente, quella è la risposta: vai avanti.\r\nLa frase che dici **mentre** parte un tool è corta e neutra — \"un attimo che guardo\", \"controllo subito\" — **non** ripete quello che ha chiesto (\"controllo i corsi di bachata sensual del giovedì\" è già troppo).\r\n\r\n- **Corsi** — `get_courses`. `p_style` col nome del ballo. `p_level` col livello (quello del chiamante se lo conosci, o quello che ti dice). Giorno → `p_day`. Maestro → `p_instructor` (basta il cognome; se non trovi, riprova più corto). Quando ti dà un filtro nuovo, richiama con quello.\r\n- **Prenotare / disdire / spostare** — prima di `create_booking` ripeti ad alta voce cosa stai prenotando. Disdire: `get_student_bookings` → conferma (\"annullo la bachata di mercoledì alle nove, confermi?\") → `cancel_booking` → di' che il posto è libero. Spostare = `cancel_booking` + `create_booking`. Senza `student_id` non puoi disdire: passa da `notify_secretary`.\r\n- **Prove** — settimana di prova + studente riconosciuto: `create_trial_session`. Nuovo: nome e cognome, poi `notify_secretary`. Prova singola fuori settimana: una per corso, \"un attimo che verifico\" → `check_trial_used`; se già usata, proponi l'iscrizione.\r\n- **Prezzi** — `get_pricing`. Se non dice quanti corsi, chiamalo con uno e rispondi diretto. Il pagamento lo gestisce la segreteria.\r\n- **Recuperi** — un intermedio recupera solo in base; un avanzato in intermedio o base; mai a un livello pari o più alto. Spiegalo con naturalezza se serve.\r\n- **Domande pratiche** (parcheggio, abbigliamento, età, lezioni private) → `get_faq`. Se le FAQ non sanno: `notify_secretary`, e se ti chiede come scrivere dai il WhatsApp.\r\n- **Persona vera** — non puoi passare la chiamata, non prometterlo. Prendi tu il problema con `notify_secretary` (il riassunto lo scrivi tu): \"la giro alla segreteria, ti richiamano loro\".\r\n\r\n# Chiudere\r\nQuando avete finito: un saluto breve e cordiale, poi subito `end_call`. Se non lo chiami, la linea resta aperta.\r\n\r\n# Regole ferme\r\nCorsi, orari, prezzi, maestri, posti liberi: se non vengono da un tool, non li dici. Niente sconti o eccezioni, quelli li fa la segreteria. Non annulli niente senza una conferma esplicita. Resti nelle cose di Ritmo Tropicale.\r\n",
         "llm": "qwen36-35b-a3b",
         "reasoning_effort": null,
+        "service_tier": "standard",
         "opener": null,
         "thinking_budget": null,
         "enable_reasoning_summary": false,
@@ -225,7 +245,13 @@
           "tool_1301kx1mg0drfj9v9vsek7hv7c79",
           "tool_6901kx1v9gx8fqnvkmqytxkjyxmk"
         ],
+        "tool_ids_strict": false,
         "built_in_tools": {
+          "transfer_to_agent": null,
+          "update_state": null,
+          "memory_entry_search": null,
+          "run_subagent": null,
+          "flag_issue_for_review": null,
           "end_call": {
             "type": "system",
             "name": "end_call",
@@ -257,10 +283,10 @@
             "tool_call_sound_behavior": "auto",
             "tool_error_handling_mode": "auto",
             "params": {
-              "system_tool_type": "language_detection"
+              "system_tool_type": "language_detection",
+              "only_at_conversation_start": false
             }
           },
-          "transfer_to_agent": null,
           "transfer_to_number": null,
           "skip_turn": null,
           "play_keypad_touch_tone": {
@@ -283,18 +309,12 @@
             }
           },
           "voicemail_detection": null,
-          "update_state": null,
-          "memory_entry_search": null,
-          "memory_entry_create": null,
-          "memory_entry_update": null,
-          "memory_entry_delete": null,
-          "agent_prompt_change": null,
-          "procedure_update": null,
-          "procedure_create": null,
-          "procedure_delete": null,
           "transfer_to_genesys": null,
           "transfer_to_genesys_chat": null,
-          "run_subagent": null
+          "transfer_to_genesys_bot": null
+        },
+        "rich_content": {
+          "enabled_components": []
         },
         "enable_parallel_tool_calls": false,
         "mcp_server_ids": [],
@@ -308,6 +328,7 @@
           }
         ],
         "custom_llm": null,
+        "bedrock_llm": null,
         "speech_engine": null,
         "ignore_default_personality": false,
         "rag": {
@@ -318,7 +339,9 @@
           "max_documents_length": 50000,
           "max_retrieved_rag_chunks_count": 20,
           "num_candidates": null,
-          "query_rewrite_prompt_override": null
+          "query_rewrite_prompt_override": null,
+          "knowledge_base_tool_info": null,
+          "include_source_urls": false
         },
         "timezone": "Europe/Rome",
         "backup_llm_config": {
@@ -353,16 +376,19 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_student_by_name",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Cerca lo studente per nome.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [
                   "p_name"
                 ],
-                "description": "Cerca lo studente per nome.",
                 "properties": {
                   "p_name": {
                     "type": "string",
@@ -370,6 +396,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -380,8 +407,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -410,14 +440,17 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_courses",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Corsi attivi (filtri opzionali). Chiamalo prima di rispondere su corsi, orari, maestri o sedi. Risponde con: total = quanti corsi corrispondono; courses = quelli che puoi dire ad alta voce (se total e maggiore o uguale a 3 ne ricevi UNO solo, il primo della settimana); truncated = true quando gli altri non te li ha dati; available_days / available_levels / available_styles = i valori tra cui far scegliere per restringere. Se truncated e true, di quanti sono e chiedi il filtro: gli altri corsi non li hai.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [],
-                "description": "Corsi attivi (filtri opzionali). Chiamalo prima di rispondere su corsi, orari, maestri o sedi. Risponde con: total = quanti corsi corrispondono; courses = quelli che puoi dire ad alta voce (se total e maggiore o uguale a 3 ne ricevi UNO solo, il primo della settimana); truncated = true quando gli altri non te li ha dati; available_days / available_levels / available_styles = i valori tra cui far scegliere per restringere. Se truncated e true, di quanti sono e chiedi il filtro: gli altri corsi non li hai.",
                 "properties": {
                   "p_style": {
                     "type": "string",
@@ -425,6 +458,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -435,6 +469,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -445,6 +480,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -455,6 +491,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -465,6 +502,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -475,8 +513,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -505,14 +546,17 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_faq",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "FAQ della scuola (parcheggio, orari segreteria, pagamenti, ecc.). Chiamalo prima di dire 'non ho l'informazione'.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [],
-                "description": "FAQ della scuola (parcheggio, orari segreteria, pagamenti, ecc.). Chiamalo prima di dire 'non ho l'informazione'.",
                 "properties": {
                   "p_topic": {
                     "type": "string",
@@ -520,6 +564,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -530,8 +575,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -560,16 +608,19 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_student_bookings",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Prenotazioni future dello studente (per disdette/spostamenti).",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [
                   "p_student_id"
                 ],
-                "description": "Prenotazioni future dello studente (per disdette/spostamenti).",
                 "properties": {
                   "p_student_id": {
                     "type": "string",
@@ -577,6 +628,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -587,8 +639,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -617,18 +672,21 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_create_booking",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Prenota una lezione. Solo dopo conferma esplicita del chiamante.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [
                   "p_student_id",
                   "p_course_id",
                   "p_date"
                 ],
-                "description": "Prenota una lezione. Solo dopo conferma esplicita del chiamante.",
                 "properties": {
                   "p_student_id": {
                     "type": "string",
@@ -636,6 +694,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -646,6 +705,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -656,6 +716,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -666,8 +727,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -696,17 +760,20 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_cancel_booking",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Annulla una prenotazione confermata. Solo dopo conferma esplicita.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [
                   "p_booking_id",
                   "p_student_id"
                 ],
-                "description": "Annulla una prenotazione confermata. Solo dopo conferma esplicita.",
                 "properties": {
                   "p_booking_id": {
                     "type": "string",
@@ -714,6 +781,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -724,6 +792,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -734,8 +803,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -764,18 +836,21 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_create_recovery",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Prenota un recupero (regole di livello applicate). Solo dopo conferma.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [
                   "p_student_id",
                   "p_course_id",
                   "p_date"
                 ],
-                "description": "Prenota un recupero (regole di livello applicate). Solo dopo conferma.",
                 "properties": {
                   "p_student_id": {
                     "type": "string",
@@ -783,6 +858,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -793,6 +869,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -803,6 +880,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -813,8 +891,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -843,17 +924,20 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_check_trial_used",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Verifica se lo studente ha già usato la prova per un corso.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [
                   "p_student_id",
                   "p_course_id"
                 ],
-                "description": "Verifica se lo studente ha già usato la prova per un corso.",
                 "properties": {
                   "p_student_id": {
                     "type": "string",
@@ -861,6 +945,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -871,6 +956,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -881,8 +967,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -911,18 +1000,21 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_create_trial_session",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Registra una lezione di prova.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [
                   "p_student_id",
                   "p_course_id",
                   "p_date"
                 ],
-                "description": "Registra una lezione di prova.",
                 "properties": {
                   "p_student_id": {
                     "type": "string",
@@ -930,6 +1022,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -940,6 +1033,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -950,6 +1044,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -960,8 +1055,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -990,16 +1088,19 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_pricing",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Calcola il costo dell'abbonamento in base al numero di corsi.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [
                   "p_course_count"
                 ],
-                "description": "Calcola il costo dell'abbonamento in base al numero di corsi.",
                 "properties": {
                   "p_course_count": {
                     "type": "integer",
@@ -1007,6 +1108,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -1017,8 +1119,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -1047,22 +1152,28 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_get_settings",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Impostazioni globali (es. settimana di prova attiva).",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [],
-                "description": "Impostazioni globali (es. settimana di prova attiva).",
                 "properties": {}
               },
               "response_body_schema": null,
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "webhook",
@@ -1091,16 +1202,19 @@
                 },
                 "Content-Type": "application/json"
               },
+              "kind": "webhook",
               "url": "https://wpdpuxhcxetyciyeecqp.supabase.co/rest/v1/rpc/api_notify_secretary",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
               "request_body_schema": {
+                "description": "Lascia una nota alla segreteria (reclami, richieste speciali, pagamenti, cose fuori dalla tua competenza). La segreteria la vede e richiama.",
+                "dynamic_variable": "",
+                "is_omitted": false,
                 "type": "object",
                 "required": [
                   "p_message"
                 ],
-                "description": "Lascia una nota alla segreteria (reclami, richieste speciali, pagamenti, cose fuori dalla tua competenza). La segreteria la vede e richiama.",
                 "properties": {
                   "p_message": {
                     "type": "string",
@@ -1108,6 +1222,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -1118,6 +1233,7 @@
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "system__caller_id",
+                    "allowed_values": null,
                     "allowed_values_dynamic_variable": "",
                     "constant_value": "",
                     "is_omitted": false
@@ -1128,8 +1244,11 @@
               "response_filter": null,
               "content_type": "application/json",
               "auth_resolved_params": [],
-              "auth_connection": null
-            }
+              "auth_connection": null,
+              "mtls_auth_connection": null
+            },
+            "follow_redirects": false,
+            "follow_redirects_allowed_domains": []
           },
           {
             "type": "system",
@@ -1162,7 +1281,8 @@
             "tool_call_sound_behavior": "auto",
             "tool_error_handling_mode": "auto",
             "params": {
-              "system_tool_type": "language_detection"
+              "system_tool_type": "language_detection",
+              "only_at_conversation_start": false
             }
           },
           {
@@ -1190,7 +1310,7 @@
   },
   "metadata": {
     "created_at_unix_secs": 1779440002,
-    "updated_at_unix_secs": 1784198489
+    "updated_at_unix_secs": 1792369950
   },
   "platform_settings": {
     "evaluation": {
@@ -1203,6 +1323,8 @@
           "use_knowledge_base": false,
           "scope": "conversation",
           "llm": null,
+          "llm_billed": false,
+          "analysis_schedule": null,
           "scoring_mode": "binary",
           "max_score": 100,
           "score_instructions": null
@@ -1215,6 +1337,8 @@
           "use_knowledge_base": false,
           "scope": "conversation",
           "llm": null,
+          "llm_billed": false,
+          "analysis_schedule": null,
           "scoring_mode": "binary",
           "max_score": 100,
           "score_instructions": null
@@ -1227,6 +1351,8 @@
           "use_knowledge_base": false,
           "scope": "conversation",
           "llm": null,
+          "llm_billed": false,
+          "analysis_schedule": null,
           "scoring_mode": "binary",
           "max_score": 100,
           "score_instructions": null
@@ -1239,6 +1365,8 @@
           "use_knowledge_base": false,
           "scope": "conversation",
           "llm": null,
+          "llm_billed": false,
+          "analysis_schedule": null,
           "scoring_mode": "binary",
           "max_score": 100,
           "score_instructions": null
@@ -1251,6 +1379,8 @@
           "use_knowledge_base": false,
           "scope": "conversation",
           "llm": null,
+          "llm_billed": false,
+          "analysis_schedule": null,
           "scoring_mode": "binary",
           "max_score": 100,
           "score_instructions": null
@@ -1323,6 +1453,8 @@
         "speaking_status": null,
         "connecting_status": null,
         "chatting_status": null,
+        "queue_waiting_status": null,
+        "queue_waiting_status_short": null,
         "input_label": null,
         "input_placeholder": null,
         "input_placeholder_text_only": null,
@@ -1331,6 +1463,7 @@
         "agent_ended_conversation": null,
         "conversation_id": null,
         "error_occurred": null,
+        "queue_timed_out": null,
         "copy_id": null,
         "initiate_feedback": null,
         "request_follow_up_feedback": null,
@@ -1349,7 +1482,15 @@
         "wrap": null,
         "agent_working": null,
         "agent_done": null,
-        "agent_error": null
+        "agent_error": null,
+        "attach_file": null,
+        "remove_file": null,
+        "file_upload_error": null,
+        "file_type_unsupported": null,
+        "file_too_large": null,
+        "file_limit_reached": null,
+        "typing_indicator": null,
+        "rich_content_unavailable": null
       },
       "styles": {
         "base": null,
@@ -1373,34 +1514,86 @@
         "compact_sheet_radius": null,
         "dropdown_sheet_radius": null
       },
+      "show_resize_button": true,
+      "end_confirmation_enabled": false,
       "language_selector": false,
       "supports_text_only": true,
       "custom_avatar_path": null,
       "language_presets": {
         "en": {
           "text_contents": null,
+          "text_contents_translation": null,
           "terms_text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy. If you do not wish to have your conversations recorded, please refrain from using this service.",
           "terms_html": "<h4>Terms and conditions</h4>\n<p>By clicking &quot;Agree,&quot; and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy. If you do not wish to have your conversations recorded, please refrain from using this service.</p>\n",
           "terms_key": null,
           "terms_translation": {
             "source_hash": "{\"termsText\":\"#### Terms and conditions\\n\\nBy clicking \\\"Agree,\\\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\\nIf you do not wish to have your conversations recorded, please refrain from using this service.\",\"language\":\"it\"}",
             "text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy. If you do not wish to have your conversations recorded, please refrain from using this service."
-          }
+          },
+          "first_message_quick_replies_translation": {}
         },
         "es": {
           "text_contents": null,
+          "text_contents_translation": null,
           "terms_text": "#### Términos y condiciones\n\nAl hacer clic en \"Aceptar\", y cada vez que interactúo con este agente de IA, consiento el registro, almacenamiento y compartición de mis comunicaciones con proveedores de servicios de terceros, y como se describe en la Política de Privacidad. Si no desea que sus conversaciones sean grabadas, por favor absténgase de usar este servicio.",
           "terms_html": "<h4>Términos y condiciones</h4>\n<p>Al hacer clic en &quot;Aceptar&quot;, y cada vez que interactúo con este agente de IA, consiento el registro, almacenamiento y compartición de mis comunicaciones con proveedores de servicios de terceros, y como se describe en la Política de Privacidad. Si no desea que sus conversaciones sean grabadas, por favor absténgase de usar este servicio.</p>\n",
           "terms_key": null,
           "terms_translation": {
             "source_hash": "{\"termsText\":\"#### Terms and conditions\\n\\nBy clicking \\\"Agree,\\\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\\nIf you do not wish to have your conversations recorded, please refrain from using this service.\",\"language\":\"it\"}",
             "text": "#### Términos y condiciones\n\nAl hacer clic en \"Aceptar\", y cada vez que interactúo con este agente de IA, consiento el registro, almacenamiento y compartición de mis comunicaciones con proveedores de servicios de terceros, y como se describe en la Política de Privacidad. Si no desea que sus conversaciones sean grabadas, por favor absténgase de usar este servicio."
-          }
+          },
+          "first_message_quick_replies_translation": {}
         }
-      }
+      },
+      "first_message_quick_replies": []
     },
     "data_collection": {},
     "data_collection_scopes": {},
+    "analysis_items": {
+      "evaluation_criteria": [
+        {
+          "source": "user",
+          "analysis_item_id": "aitem_5801m0hgw4mwedb902fb38nkf20e",
+          "version_id": null,
+          "additional_version_ids": [],
+          "scope": "conversation",
+          "weight": null
+        },
+        {
+          "source": "user",
+          "analysis_item_id": "aitem_3601m0hgw4nxfvfsg0qn2jgsmnr6",
+          "version_id": null,
+          "additional_version_ids": [],
+          "scope": "conversation",
+          "weight": null
+        },
+        {
+          "source": "user",
+          "analysis_item_id": "aitem_1101m0hgw4p2fv4rwfphj8hn7n20",
+          "version_id": null,
+          "additional_version_ids": [],
+          "scope": "conversation",
+          "weight": null
+        },
+        {
+          "source": "user",
+          "analysis_item_id": "aitem_3101m0hgw4p7f179t0ew1jwk8zvh",
+          "version_id": null,
+          "additional_version_ids": [],
+          "scope": "conversation",
+          "weight": null
+        },
+        {
+          "source": "user",
+          "analysis_item_id": "aitem_7801m0hgw4pcefrba37p5vgkss30",
+          "version_id": null,
+          "additional_version_ids": [],
+          "scope": "conversation",
+          "weight": null
+        }
+      ],
+      "data_collection": []
+    },
     "overrides": {
       "conversation_config_override": {
         "asr": {
@@ -1408,27 +1601,34 @@
         },
         "turn": {
           "soft_timeout_config": {
-            "message": false
+            "message": false,
+            "additional_soft_timeout_messages": false
           }
         },
         "tts": {
           "model_id": false,
           "voice_id": false,
+          "supported_voices": false,
           "stability": false,
           "speed": false,
-          "similarity_boost": false
+          "similarity_boost": false,
+          "pvc_strength": false,
+          "pronunciation_dictionary_locators": false
         },
         "conversation": {
-          "text_only": true
+          "text_only": true,
+          "max_duration_seconds": false
         },
         "agent": {
           "first_message": true,
           "language": true,
           "max_conversation_duration_message": false,
+          "silence_end_call_message": false,
           "prompt": {
             "prompt": false,
             "llm": false,
             "tool_ids": false,
+            "tool_ids_strict": false,
             "native_mcp_server_ids": false,
             "knowledge_base": false
           }
@@ -1436,7 +1636,8 @@
       },
       "custom_llm_extra_body": false,
       "enable_conversation_initiation_client_data_from_webhook": true,
-      "enable_starting_workflow_node_id_from_client": false
+      "enable_starting_workflow_node_id_from_client": false,
+      "enable_procedure_ids_from_client": false
     },
     "workspace_overrides": {
       "conversation_initiation_client_data_webhook": null,
@@ -1446,7 +1647,15 @@
           "transcript"
         ],
         "transcript_format": "json",
+        "exclude_transcript": false,
         "send_audio": false
+      },
+      "cloud_storage_export": {
+        "destination_id": null,
+        "events": [
+          "transcript"
+        ],
+        "transcript_format": "json"
       }
     },
     "testing": {
@@ -1461,6 +1670,12 @@
       },
       "prompt_injection": {
         "is_enabled": true
+      },
+      "synthetic_voice": {
+        "is_enabled": false,
+        "trigger_action": {
+          "type": "end_call"
+        }
       },
       "content": {
         "execution_mode": "streaming",
@@ -1518,6 +1733,11 @@
       "daily_limit": 100000,
       "bursting_enabled": true
     },
+    "queueing_config": {
+      "enabled": false,
+      "wait_timeout_seconds": 180,
+      "hold_audio": null
+    },
     "ban": null,
     "smb_metadata": null,
     "privacy": {
@@ -1527,13 +1747,21 @@
       "delete_audio": false,
       "apply_to_existing_conversations": false,
       "zero_retention_mode": false,
+      "nested_history_redaction": false,
       "conversation_history_redaction": {
         "enabled": false,
-        "entities": []
+        "entities": [],
+        "excluded_data_collection_ids": []
+      },
+      "user_memory": {
+        "enabled": false,
+        "scale": "balanced"
       }
     },
     "trust_context": "unknown",
     "analysis_llm": "gemini-2.5-flash",
+    "analysis_bedrock_llm": null,
+    "analysis_llm_billed": false,
     "topic_discovery": {
       "enabled": true
     },
@@ -1578,9 +1806,11 @@
           "x": 0.0,
           "y": 0.0
         },
-        "edge_order": []
+        "edge_order": [],
+        "parent_subgraph_id": null
       }
     },
+    "subgraphs": {},
     "prevent_subagent_loops": false
   },
   "access_info": {
@@ -1591,8 +1821,75 @@
     "anonymous_access_level_override": null,
     "access_source": "creator"
   },
+  "access_permissions": [
+    "agent_archive",
+    "agent_duplicate",
+    "agent_edit_advanced_settings",
+    "agent_edit_config",
+    "agent_edit_conversation_metadata",
+    "agent_edit_guardrails",
+    "agent_edit_llm",
+    "agent_edit_memories",
+    "agent_edit_metadata",
+    "agent_edit_procedures",
+    "agent_edit_prompt",
+    "agent_edit_task_config",
+    "agent_edit_voice",
+    "agent_edit_widget",
+    "agent_edit_workflow",
+    "agent_manage_analysis",
+    "agent_manage_attached_knowledge_base",
+    "agent_manage_attached_mcp_servers",
+    "agent_manage_attached_pronunciation_dictionaries",
+    "agent_manage_attached_tests",
+    "agent_manage_attached_tools",
+    "agent_manage_batch_calling",
+    "agent_manage_branches",
+    "agent_manage_channels",
+    "agent_manage_experiments",
+    "agent_manage_phone_numbers",
+    "agent_manage_protected_branches",
+    "agent_manage_traffic",
+    "agent_manage_whatsapp",
+    "agent_merge_branches",
+    "agent_monitor_conversation",
+    "agent_publish_version",
+    "agent_rerun_conversation_analysis",
+    "agent_run_tasks",
+    "agent_run_tests",
+    "agent_search_conversations",
+    "agent_view_advanced_settings",
+    "agent_view_analysis",
+    "agent_view_analytics",
+    "agent_view_batch_calling",
+    "agent_view_channels",
+    "agent_view_config",
+    "agent_view_conversation_history",
+    "agent_view_costs",
+    "agent_view_experiments",
+    "agent_view_guardrails",
+    "agent_view_knowledge_base",
+    "agent_view_llm",
+    "agent_view_mcp_servers",
+    "agent_view_memories",
+    "agent_view_metadata",
+    "agent_view_phone_numbers",
+    "agent_view_procedures",
+    "agent_view_prompt",
+    "agent_view_pronunciation_dictionaries",
+    "agent_view_tasks",
+    "agent_view_tests",
+    "agent_view_tools",
+    "agent_view_version_history",
+    "agent_view_voice",
+    "agent_view_whatsapp",
+    "agent_view_widget",
+    "agent_view_workflow",
+    "resource_delete",
+    "resource_manage_access"
+  ],
   "tags": [],
-  "version_id": "agtvrsn_4801kxn88sk9fbwr805apv2gd9km",
+  "version_id": "agtvrsn_1701m58s5zn3eat93s7cn0vhvegx",
   "branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
   "main_branch_id": "agtbrch_8101ks7e7a10e51v7nrqme1z283z",
   "procedures": {
@@ -1600,8 +1897,15 @@
       "procedure_id": "agtprc_0801ks7e7a0seyy9hmzrhqc49ry8",
       "version_id": "agtprcv_0501ks7ejy80fhv8ctt70dm9vfnh",
       "name": "Untitled Procedure",
-      "type": "free_form"
+      "type": "free_form",
+      "trigger": "",
+      "referenced_tool_ids": [],
+      "referenced_kb_ids": [],
+      "referenced_procedure_ids": [],
+      "referenced_dynamic_variables": [],
+      "folder_parent_id": null
     }
   },
-  "trust_context": "unknown"
+  "trust_context": "unknown",
+  "default_hold_audio_url": "https://eleven-public-cdn-common.elevenlabs.io/convai/ambient-audio-assets/elevator1.mp3"
 }

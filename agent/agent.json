@@ -46,7 +46,8 @@
       "use_llm_generated_message": false,
       "randomize_fillers": false,
       "max_soft_timeouts_per_generation": 1,
-      "llm_generated_message_prompt_override": null
+      "llm_generated_message_prompt_override": null,
+      "disable_until_first_user_message": false
     }
   },
   "tools": [
@@ -63,5 +64,5 @@
     "get_student_by_name",
     "notify_secretary"
   ],
-  "prompt_chars": 8789
+  "prompt_chars": 9089
 }
