@@ -25,12 +25,12 @@
     "similarity_boost": 0.8,
     "expressive_mode": true,
     "suggested_audio_tags": [
-      "Con empatia",
       "Calorosamente",
-      "Con sicurezza",
       "Con pazienza",
-      "Con entusiasmo",
-      "Ridacchia"
+      "clears throat",
+      "sighs",
+      "laughs",
+      "rapidly"
     ],
     "pronunciation_dictionaries": [
       "1QVkfR4ids8tjDohIirW"
@@ -64,5 +64,5 @@
     "get_student_by_name",
     "notify_secretary"
   ],
-  "prompt_chars": 9718
+  "prompt_chars": 10598
 }
