@@ -1,7 +1,7 @@
 {
   "name": "tropicoqueta",
   "agent_id": "agent_9001ks7e78grfazrhck2vfmy2kcr",
-  "llm": "qwen36-35b-a3b",
+  "llm": "gemini-3.5-flash",
   "temperature": 0.0,
   "first_message": "[rapidly]Ciao! Sono {{agent_name}}, l'assistente automatico di Ritmo Tropicale. Dimmi pure! [clears throat]",
   "language": "it",
