@@ -71,8 +71,8 @@
     "access_source": "creator"
   },
   "usage_stats": {
-    "total_calls": 0,
-    "avg_latency_secs": 0.0
+    "total_calls": 1,
+    "avg_latency_secs": 0.45
   },
   "response_mocks": null
 }
